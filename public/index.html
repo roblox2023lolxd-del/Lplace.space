@@ -2,34 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Lplace Live</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lplace.live</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 </head>
 <body>
-<h1>Lplace.live Map</h1>
-
 <div id="toolbar">
-  <button onclick="toggleDrawMode()">Toggle Draw Mode</button>
-  <button onclick="tool='pixel'">Pixel</button>
-  <button onclick="tool='brush'">Brush</button>
-  <button onclick="tool='eraser'">Eraser</button>
-  <label>Brush size: <input type="number" id="brush-size" value="5" onchange="brushSize=parseInt(this.value)"></label>
-  <button onclick="logout()">Logout</button>
+  <button id="drawMode">Toggle Draw Mode</button>
+  <button id="brushMode">Brush Mode</button>
+  <button id="pixelMode">Pixel Mode</button>
+  <button id="eraser">Eraser</button>
+  <label>Size: <input type="number" id="size" value="5" min="1" max="50"></label>
+  <input type="color" id="color" value="#ff0000">
 </div>
-
-<canvas id="mapCanvas" style="border:1px solid #000;"></canvas>
-
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="client.js"></script>
-<script>
-async function logout() {
-  await fetch("/logout", { method:"POST" });
-  window.location.href = "/login.html";
-}
-
-function toggleDrawMode() {
-  drawMode = !drawMode;
-  document.body.style.cursor = drawMode ? "crosshair" : "default";
-}
-</script>
 </body>
 </html>

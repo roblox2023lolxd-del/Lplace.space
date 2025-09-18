@@ -15,7 +15,6 @@ const drawingsFile = path.join(__dirname, "drawings.json");
 let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : {};
 let drawings = fs.existsSync(drawingsFile) ? JSON.parse(fs.readFileSync(drawingsFile)) : {};
 
-// Middleware
 app.use(bodyParser.json());
 app.use(session({
   secret: "lplace-secret",
@@ -55,10 +54,9 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// Get current user
+// Current user
 app.get("/me", (req, res) => {
-  if (!req.session.user) return res.json({ user: null });
-  res.json({ user: req.session.user });
+  res.json({ user: req.session.user || null });
 });
 
 // Save drawings

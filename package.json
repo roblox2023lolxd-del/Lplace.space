@@ -1,7 +1,6 @@
 {
   "name": "lplace-live",
   "version": "1.0.0",
-  "description": "Lplace.live map drawing game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

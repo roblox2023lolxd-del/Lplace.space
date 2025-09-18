@@ -1,7 +1,7 @@
-// Initialize map
-const map = L.map('map').setView([40.7128, -74.006], 13); // Default NYC
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+// Map setup
+const map = L.map('map').setView([40.7128, -74.006], 13); // default NYC
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; OpenStreetMap contributors'
 }).addTo(map);
 
 // Canvas setup
@@ -9,65 +9,62 @@ const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
+function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 
 // Controls
-let drawMode = false, drawing = false, eraser = false, brushMode = false;
-let size = parseInt(document.getElementById('sizeInput').value);
+let drawMode=false, drawing=false, eraser=false, brushMode=false;
+let size=parseInt(document.getElementById('sizeInput').value);
+const minZoomForDrawing = 10; // city level minimum zoom
 
-document.getElementById('drawModeBtn').onclick = () => {
-    drawMode = !drawMode;
-    map.dragging[drawMode ? 'disable' : 'enable']();
-    map.scrollWheelZoom[drawMode ? 'disable' : 'enable']();
+document.getElementById('drawModeBtn').onclick = ()=>{
+    drawMode=!drawMode;
+    map.dragging[drawMode?'disable':'enable']();
+    map.scrollWheelZoom[drawMode?'disable':'enable']();
 };
-document.getElementById('pixelBtn').onclick = () => { brushMode=false; eraser=false; };
-document.getElementById('brushBtn').onclick = () => { brushMode=true; eraser=false; };
-document.getElementById('eraserBtn').onclick = () => { eraser=true; };
-document.getElementById('sizeInput').oninput = e => { size=parseInt(e.target.value); };
+document.getElementById('pixelBtn').onclick=()=>{brushMode=false; eraser=false;};
+document.getElementById('brushBtn').onclick=()=>{brushMode=true; eraser=false;};
+document.getElementById('eraserBtn').onclick=()=>{eraser=true;};
+document.getElementById('sizeInput').oninput=e=>{size=parseInt(e.target.value);};
 
-// Track all drawings in memory
-let allDrawings = {}; // { username: { strokes: [...] } }
-let currentUser = null;
+// Multiplayer drawing
+let allDrawings={}; 
+let currentUser=null;
 
 // Fetch logged-in user
-fetch('/me').then(r => r.json()).then(data => { currentUser = data.user; loadDrawings(); });
+fetch('/me').then(r=>r.json()).then(data=>{ currentUser=data.user; loadDrawings(); });
 
-// Load existing drawings
-function loadDrawings() {
+// Load user + all drawings
+function loadDrawings(){
     fetch('/load').then(r=>r.json()).then(userDrawings=>{
-        if(userDrawings) allDrawings[currentUser] = userDrawings;
+        if(userDrawings) allDrawings[currentUser]=userDrawings;
         fetch('/allDrawings').then(r=>r.json()).then(all=>{
-            allDrawings = all; redrawCanvas();
+            allDrawings=all; redrawCanvas();
         });
     });
 }
 
 // Save drawings
-function saveDrawings() {
+function saveDrawings(){
     if(!currentUser) return;
-    fetch('/save', {
+    fetch('/save',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(allDrawings[currentUser])
     });
 }
 
-// Redraw all users' drawings
-function redrawCanvas() {
+// Redraw canvas
+function redrawCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     for(const user in allDrawings){
-        const strokes = allDrawings[user].strokes || [];
+        const strokes=allDrawings[user].strokes||[];
         strokes.forEach(s=>{
-            ctx.lineWidth = s.size;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = s.color;
+            ctx.lineWidth=s.size;
+            ctx.lineCap='round';
+            ctx.strokeStyle=s.color;
             ctx.beginPath();
             for(let i=0;i<s.points.length;i++){
-                const p = s.points[i];
+                const p=s.points[i];
                 if(i===0) ctx.moveTo(p.x,p.y);
                 else ctx.lineTo(p.x,p.y);
             }
@@ -77,30 +74,36 @@ function redrawCanvas() {
 }
 
 // Drawing logic
-let currentStroke = null;
-canvas.addEventListener('mousedown',e=>{
+let currentStroke=null;
+canvas.addEventListener('mousedown', e=>{
     if(!drawMode || !currentUser) return;
+
+    if(map.getZoom() < minZoomForDrawing){
+        alert("Zoom in closer to a city to draw!");
+        return;
+    }
+
     drawing=true;
     const color = eraser?'#ffffff':'#00ffff';
-    currentStroke = { size, color, points:[{x:e.offsetX,y:e.offsetY}] };
+    currentStroke={size, color, points:[{x:e.offsetX, y:e.offsetY}]};
 });
-canvas.addEventListener('mousemove',e=>{
-    if(!drawing || !drawMode || !currentUser) return;
-    const point = {x:e.offsetX,y:e.offsetY};
+canvas.addEventListener('mousemove', e=>{
+    if(!drawing||!drawMode||!currentUser) return;
+    const point={x:e.offsetX, y:e.offsetY};
     currentStroke.points.push(point);
-    // Draw in real-time
-    ctx.lineWidth = currentStroke.size;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = currentStroke.color;
+
+    ctx.lineWidth=currentStroke.size;
+    ctx.lineCap='round';
+    ctx.strokeStyle=currentStroke.color;
     ctx.beginPath();
-    const pts = currentStroke.points;
+    const pts=currentStroke.points;
     ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y);
     ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
     ctx.stroke();
 });
-canvas.addEventListener('mouseup',e=>{
+canvas.addEventListener('mouseup', e=>{
     if(drawing && currentStroke && currentUser){
-        if(!allDrawings[currentUser]) allDrawings[currentUser] = { strokes: [] };
+        if(!allDrawings[currentUser]) allDrawings[currentUser]={strokes:[]};
         allDrawings[currentUser].strokes.push(currentStroke);
         saveDrawings();
         currentStroke=null;
@@ -109,9 +112,9 @@ canvas.addEventListener('mouseup',e=>{
 });
 canvas.addEventListener('mouseout',()=>{drawing=false; currentStroke=null;});
 
-// Hover user display
-canvas.addEventListener('mousemove',e=>{
-    let hoverUser = null;
+// Hover username display
+canvas.addEventListener('mousemove', e=>{
+    let hoverUser=null;
     for(const user in allDrawings){
         if(user===currentUser) continue;
         allDrawings[user].strokes.forEach(s=>{
@@ -123,4 +126,13 @@ canvas.addEventListener('mousemove',e=>{
         });
     }
     canvas.title = hoverUser?`Drawing by: ${hoverUser}`:'';
+});
+
+// Cursor indicator for zoom restriction
+map.on('zoomend', ()=>{
+    if(map.getZoom() < minZoomForDrawing){
+        canvas.style.cursor='not-allowed';
+    } else {
+        canvas.style.cursor='crosshair';
+    }
 });

@@ -3,53 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lplace.live - Game</title>
+<title>Lplace.live - Classic</title>
 
 <!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
  integrity="sha256-sA+oTy8XUo6K+5XkFiYChfbyYk/9K8g+lo2xV/9g6uM=" crossorigin=""/>
 
 <style>
-  html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: Arial, sans-serif; }
-  #map { width: 100%; height: 100%; }
-  #drawCanvas { position:absolute; top:0; left:0; z-index: 500; }
+  html, body { margin:0; padding:0; height:100%; font-family: "Courier New", monospace; }
+  #map { width:100%; height:100%; z-index:0; }
+  #drawCanvas { position:absolute; top:0; left:0; z-index:10; }
+  
+  /* Classic retro tools */
   #controls {
     position: fixed;
     top: 10px;
     left: 10px;
-    background: rgba(30,30,30,0.9);
-    padding: 10px;
-    border-radius: 8px;
-    z-index: 1001;
+    background: #c0c0c0;
+    border: 3px solid #808080;
+    padding: 8px;
+    z-index: 20;
   }
   #controls button, #controls input[type=number] {
-    margin: 5px 5px 5px 0;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-    background: #00ffff;
-    color: #121212;
+    background:#e0e0e0;
+    border:2px solid #808080;
+    font-weight:bold;
+    padding:5px 10px;
+    margin:3px;
+    cursor:pointer;
   }
-  #controls button:hover, #controls input[type=number]:hover { background: #00bfbf; }
+  #controls button:hover, #controls input[type=number]:hover { background:#d0d0d0; }
+  
   nav {
     position: fixed;
     top: 10px;
     right: 10px;
-    z-index: 1002;
+    z-index:20;
   }
   nav a {
-    padding: 8px 12px;
-    background: #00ffff;
-    color: #121212;
-    border-radius: 5px;
-    font-weight: bold;
-    text-decoration: none;
-    margin-left: 5px;
+    display:inline-block;
+    padding:5px 10px;
+    background:#c0c0c0;
+    border:2px solid #808080;
+    font-weight:bold;
+    text-decoration:none;
+    color:#000;
+    margin-left:3px;
   }
-  nav a:hover { background:#00bfbf; }
+  nav a:hover { background:#d0d0d0; }
 </style>
 </head>
 <body>
@@ -58,11 +59,11 @@
 <canvas id="drawCanvas"></canvas>
 
 <div id="controls">
-  <button id="pixelBtn">Pixel Mode</button>
-  <button id="brushBtn">Brush Mode</button>
+  <button id="pixelBtn">Pixel</button>
+  <button id="brushBtn">Brush</button>
   <button id="eraserBtn">Eraser</button>
   <input type="number" id="sizeInput" min="1" max="50" value="5">
-  <button id="drawModeBtn">Toggle Draw Mode</button>
+  <button id="drawModeBtn">Draw Mode</button>
 </div>
 
 <nav>

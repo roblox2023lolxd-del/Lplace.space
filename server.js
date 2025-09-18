@@ -1,24 +1,18 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const http = require("http");
-const { Server } = require("socket.io");
+const { Pool } = require("pg");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Files
-const usersFile = path.join(__dirname, "users.json");
-const drawingsFile = path.join(__dirname, "drawings.json");
+// Postgres connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-// Init/load
-let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : {};
-let drawings = fs.existsSync(drawingsFile) ? JSON.parse(fs.readFileSync(drawingsFile)) : {};
-
+// Middleware
 app.use(bodyParser.json());
 app.use(session({
   secret: "lplace-secret",
@@ -26,25 +20,44 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
+
+// Initialize tables
+(async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password TEXT NOT NULL
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS drawings (
+      username TEXT PRIMARY KEY REFERENCES users(username),
+      data JSONB
+    );
+  `);
+})();
 
 // Signup
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
-  if (users[username]) return res.json({ success: false, message: "User already exists" });
-  users[username] = { password };
-  drawings[username] = { pixels: {}, strokes: [] };
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
-  fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
+  const exists = await pool.query("SELECT 1 FROM users WHERE username=$1", [username]);
+  if (exists.rowCount > 0) return res.json({ success: false, message: "User exists" });
+
+  await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, password]);
+  await pool.query("INSERT INTO drawings (username, data) VALUES ($1, $2)", [username, { pixels: {}, strokes: [] }]);
   res.json({ success: true });
 });
 
 // Login
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  if (!users[username] || users[username].password !== password) {
+  const result = await pool.query("SELECT password FROM users WHERE username=$1", [username]);
+  if (result.rowCount === 0 || result.rows[0].password !== password) {
     return res.json({ success: false, message: "Invalid credentials" });
   }
+
   req.session.user = username;
   res.json({ success: true });
 });
@@ -54,43 +67,23 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// Get current user
+// Current user
 app.get("/me", (req, res) => {
-  if (!req.session.user) return res.json({ user: null });
-  res.json({ user: req.session.user });
+  res.json({ user: req.session.user || null });
 });
 
 // Save drawings
-app.post("/save", (req, res) => {
+app.post("/save", async (req, res) => {
   if (!req.session.user) return res.json({ success: false, message: "Not logged in" });
-  drawings[req.session.user] = req.body;
-  fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
+  await pool.query("UPDATE drawings SET data=$1 WHERE username=$2", [req.body, req.session.user]);
   res.json({ success: true });
 });
 
 // Load drawings
-app.get("/load", (req, res) => {
+app.get("/load", async (req, res) => {
   if (!req.session.user) return res.json({ success: false });
-  res.json(drawings[req.session.user] || { pixels: {}, strokes: [] });
+  const result = await pool.query("SELECT data FROM drawings WHERE username=$1", [req.session.user]);
+  res.json(result.rows[0]?.data || { pixels: {}, strokes: [] });
 });
 
-// --- Socket.IO for real-time updates ---
-io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  // Broadcast drawing
-  socket.on("draw", (data) => {
-    socket.broadcast.emit("draw", data); // send to all other users
-  });
-
-  // Broadcast erase
-  socket.on("erase", (data) => {
-    socket.broadcast.emit("erase", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("A user disconnected");
-  });
-});
-
-server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

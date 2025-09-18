@@ -9,7 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== CANVAS SETUP =====
   const canvas = document.getElementById('drawCanvas');
   const ctx = canvas.getContext('2d');
-  function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+
+  function resizeCanvas(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+  }
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
@@ -18,60 +22,76 @@ document.addEventListener('DOMContentLoaded', () => {
   let size=parseInt(document.getElementById('sizeInput').value);
   const minZoomForDrawing = 10;
 
-  const drawModeBtn=document.getElementById('drawModeBtn');
-  const pixelBtn=document.getElementById('pixelBtn');
-  const brushBtn=document.getElementById('brushBtn');
-  const eraserBtn=document.getElementById('eraserBtn');
-  const sizeInput=document.getElementById('sizeInput');
+  const drawModeBtn = document.getElementById('drawModeBtn');
+  const pixelBtn = document.getElementById('pixelBtn');
+  const brushBtn = document.getElementById('brushBtn');
+  const eraserBtn = document.getElementById('eraserBtn');
+  const sizeInput = document.getElementById('sizeInput');
 
-  function updateModeIndicators(){
+  function setMode(mode){
+      // Reset all
+      brushMode = pixelMode = eraser = false;
+      if(mode === 'brush') brushMode=true;
+      else if(mode === 'pixel') pixelMode=true;
+      else if(mode === 'eraser') eraser=true;
+
+      updateIndicators();
+  }
+
+  function updateIndicators(){
       drawModeBtn.style.background = drawMode ? "#0f0" : "#fff";
       pixelBtn.style.background = pixelMode && !brushMode && !eraser ? "#0f0" : "#fff";
       brushBtn.style.background = brushMode ? "#0f0" : "#fff";
       eraserBtn.style.background = eraser ? "#f00" : "#fff";
+
+      // Update canvas pointer-events & cursor
+      if(drawMode){
+          canvas.style.pointerEvents = "auto";
+          canvas.style.cursor = eraser ? "crosshair" : "crosshair";
+          map.dragging.disable();
+          map.scrollWheelZoom.disable();
+      } else {
+          canvas.style.pointerEvents = "none";
+          canvas.style.cursor = "default";
+          map.dragging.enable();
+          map.scrollWheelZoom.enable();
+      }
   }
 
-  drawModeBtn.addEventListener('click', ()=>{
-      drawMode=!drawMode;
-      if(drawMode){ 
-          map.dragging.disable(); map.scrollWheelZoom.disable(); 
-      } else { 
-          map.dragging.enable(); map.scrollWheelZoom.enable(); 
-      }
-      updateModeIndicators();
-  });
-  pixelBtn.addEventListener('click', ()=>{pixelMode=true; brushMode=false; eraser=false; updateModeIndicators();});
-  brushBtn.addEventListener('click', ()=>{brushMode=true; pixelMode=false; eraser=false; updateModeIndicators();});
-  eraserBtn.addEventListener('click', ()=>{eraser=true; pixelMode=false; brushMode=false; updateModeIndicators();});
-  sizeInput.addEventListener('input', e=>{size=parseInt(e.target.value);});
+  drawModeBtn.addEventListener('click', ()=>{ drawMode = !drawMode; updateIndicators(); });
+  pixelBtn.addEventListener('click', ()=>{ setMode('pixel'); });
+  brushBtn.addEventListener('click', ()=>{ setMode('brush'); });
+  eraserBtn.addEventListener('click', ()=>{ setMode('eraser'); });
+  sizeInput.addEventListener('input', e=>{ size=parseInt(e.target.value); });
 
-  updateModeIndicators();
+  updateIndicators();
 
   // ===== USER AND DRAWINGS =====
-  let allDrawings={}; 
+  let allDrawings={};
   let currentUser=null;
 
-  fetch('/me').then(r=>r.json()).then(data=>{ 
-      currentUser=data.user; 
+  fetch('/me').then(r=>r.json()).then(data=>{
+      currentUser = data.user;
       if(!currentUser){
           alert("Not logged in! Redirecting to login.");
           window.location.href="/login.html";
       }
-      loadDrawings(); 
+      loadDrawings();
   });
 
   function loadDrawings(){
       fetch('/load').then(r=>r.json()).then(userDrawings=>{
-          if(userDrawings) allDrawings[currentUser]=userDrawings;
+          if(userDrawings) allDrawings[currentUser] = userDrawings;
           fetch('/allDrawings').then(r=>r.json()).then(all=>{
-              allDrawings=all; redrawCanvas();
+              allDrawings = all;
+              redrawCanvas();
           });
       });
   }
 
   function saveDrawings(){
       if(!currentUser) return;
-      fetch('/save',{
+      fetch('/save', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(allDrawings[currentUser])
@@ -81,14 +101,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function redrawCanvas(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       for(const user in allDrawings){
-          const strokes=allDrawings[user].strokes||[];
+          const strokes = allDrawings[user].strokes || [];
           strokes.forEach(s=>{
-              ctx.lineWidth=s.size;
-              ctx.lineCap='round';
-              ctx.strokeStyle=s.color;
+              ctx.lineWidth = s.size;
+              ctx.lineCap = 'round';
+              ctx.strokeStyle = s.color;
               ctx.beginPath();
               for(let i=0;i<s.points.length;i++){
-                  const p=s.points[i];
+                  const p = s.points[i];
                   if(i===0) ctx.moveTo(p.x,p.y);
                   else ctx.lineTo(p.x,p.y);
               }
@@ -101,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentStroke=null;
 
   function getColor(){
-      if(eraser) return null; // null for eraser
+      if(eraser) return null;
       if(brushMode) return "#00ffff";
       return "#000"; // pixel mode
   }
@@ -112,20 +132,20 @@ document.addEventListener('DOMContentLoaded', () => {
           alert("Zoom in closer to a city to draw!");
           return;
       }
-      drawing=true;
+      drawing = true;
       const color = getColor();
-      currentStroke={size, color, points:[{x:e.offsetX, y:e.offsetY}], user: currentUser};
+      currentStroke = { size, color, points:[{x:e.offsetX,y:e.offsetY}], user: currentUser };
   });
 
   canvas.addEventListener('mousemove', e=>{
       if(!drawing || !drawMode || !currentUser) return;
-      const point={x:e.offsetX, y:e.offsetY};
+      const point = { x:e.offsetX, y:e.offsetY };
       currentStroke.points.push(point);
-      ctx.lineWidth=currentStroke.size;
-      ctx.lineCap='round';
-      ctx.strokeStyle=currentStroke.color||"#ffffff";
+      ctx.lineWidth = currentStroke.size;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = currentStroke.color || "#ffffff";
       ctx.beginPath();
-      const pts=currentStroke.points;
+      const pts = currentStroke.points;
       ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y);
       ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
       ctx.stroke();
@@ -135,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if(drawing && currentStroke && currentUser){
           if(!allDrawings[currentUser]) allDrawings[currentUser]={strokes:[]};
           if(eraser){
-              // Remove strokes intersecting currentStroke points (only your strokes)
               const userStrokes = allDrawings[currentUser].strokes;
               allDrawings[currentUser].strokes = userStrokes.filter(s=>{
                   for(const p1 of s.points){
@@ -150,12 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           saveDrawings();
           redrawCanvas();
-          currentStroke=null;
+          currentStroke = null;
       }
       drawing=false;
   });
 
-  canvas.addEventListener('mouseout',()=>{drawing=false; currentStroke=null;});
+  canvas.addEventListener('mouseout', ()=>{ drawing=false; currentStroke=null; });
 
   // ===== HOVER USERNAME =====
   canvas.addEventListener('mousemove', e=>{
@@ -173,13 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
       canvas.title = hoverUser?`Drawing by: ${hoverUser}`:'';
   });
 
-  // ===== CURSOR =====
-  map.on('zoomend', ()=>{
-      canvas.style.cursor = map.getZoom() < minZoomForDrawing ? 'not-allowed':'crosshair';
-  });
-
   // ===== LOGOUT BUTTON =====
-  const logoutBtn=document.createElement('button');
+  const logoutBtn = document.createElement('button');
   logoutBtn.textContent="Logout";
   logoutBtn.style.position="absolute";
   logoutBtn.style.top="10px";

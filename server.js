@@ -1,16 +1,19 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const { Pool } = require("pg");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render sets PORT automatically
 
-// Postgres connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+// Paths to data files
+const usersFile = path.join(__dirname, "users.json");
+const drawingsFile = path.join(__dirname, "drawings.json");
+
+// Load or initialize data
+let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : {};
+let drawings = fs.existsSync(drawingsFile) ? JSON.parse(fs.readFileSync(drawingsFile)) : {};
 
 // Middleware
 app.use(bodyParser.json());
@@ -18,43 +21,31 @@ app.use(session({
   secret: "lplace-secret",
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false }
+  cookie: { secure: false } // Render uses HTTP, not HTTPS by default
 }));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
-// Initialize tables
-(async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      username TEXT PRIMARY KEY,
-      password TEXT NOT NULL
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS drawings (
-      username TEXT PRIMARY KEY REFERENCES users(username),
-      data JSONB
-    );
-  `);
-})();
-
-// Signup
-app.post("/signup", async (req, res) => {
+// Signup route
+app.post("/signup", (req, res) => {
   const { username, password } = req.body;
-  const exists = await pool.query("SELECT 1 FROM users WHERE username=$1", [username]);
-  if (exists.rowCount > 0) return res.json({ success: false, message: "User exists" });
+  if (!username || !password) return res.json({ success: false, message: "Missing username or password" });
+  if (users[username]) return res.json({ success: false, message: "User already exists" });
 
-  await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, password]);
-  await pool.query("INSERT INTO drawings (username, data) VALUES ($1, $2)", [username, { pixels: {}, strokes: [] }]);
+  users[username] = { password };
+  drawings[username] = { pixels: {}, strokes: [] };
+
+  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+  fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
+
+  req.session.user = username; // Log in immediately
   res.json({ success: true });
 });
 
-// Login
-app.post("/login", async (req, res) => {
+// Login route
+app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const result = await pool.query("SELECT password FROM users WHERE username=$1", [username]);
-  if (result.rowCount === 0 || result.rows[0].password !== password) {
+  if (!username || !password) return res.json({ success: false, message: "Missing username or password" });
+  if (!users[username] || users[username].password !== password) {
     return res.json({ success: false, message: "Invalid credentials" });
   }
 
@@ -62,28 +53,31 @@ app.post("/login", async (req, res) => {
   res.json({ success: true });
 });
 
-// Logout
+// Logout route
 app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// Current user
+// Get current logged-in user
 app.get("/me", (req, res) => {
-  res.json({ user: req.session.user || null });
+  if (!req.session.user) return res.json({ user: null });
+  res.json({ user: req.session.user });
 });
 
 // Save drawings
-app.post("/save", async (req, res) => {
+app.post("/save", (req, res) => {
   if (!req.session.user) return res.json({ success: false, message: "Not logged in" });
-  await pool.query("UPDATE drawings SET data=$1 WHERE username=$2", [req.body, req.session.user]);
+
+  drawings[req.session.user] = req.body;
+  fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
   res.json({ success: true });
 });
 
 // Load drawings
-app.get("/load", async (req, res) => {
+app.get("/load", (req, res) => {
   if (!req.session.user) return res.json({ success: false });
-  const result = await pool.query("SELECT data FROM drawings WHERE username=$1", [req.session.user]);
-  res.json(result.rows[0]?.data || { pixels: {}, strokes: [] });
+  res.json(drawings[req.session.user] || { pixels: {}, strokes: [] });
 });
 
+// Start server
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

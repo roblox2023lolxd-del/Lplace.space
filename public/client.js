@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   resizeCanvas();
 
   // ===== CONTROLS =====
-  let drawMode=false, drawing=false, eraser=false, brushMode=false;
+  let drawMode=false, drawing=false, eraser=false, brushMode=false, pixelMode=true;
   let size=parseInt(document.getElementById('sizeInput').value);
   const minZoomForDrawing = 10;
 
@@ -24,15 +24,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const eraserBtn=document.getElementById('eraserBtn');
   const sizeInput=document.getElementById('sizeInput');
 
+  function updateModeIndicators(){
+      drawModeBtn.style.background = drawMode ? "#0f0" : "#fff";
+      pixelBtn.style.background = pixelMode && !brushMode && !eraser ? "#0f0" : "#fff";
+      brushBtn.style.background = brushMode ? "#0f0" : "#fff";
+      eraserBtn.style.background = eraser ? "#f00" : "#fff";
+  }
+
   drawModeBtn.addEventListener('click', ()=>{
       drawMode=!drawMode;
-      if(drawMode){ map.dragging.disable(); map.scrollWheelZoom.disable(); }
-      else{ map.dragging.enable(); map.scrollWheelZoom.enable(); }
+      if(drawMode){ 
+          map.dragging.disable(); map.scrollWheelZoom.disable(); 
+      } else { 
+          map.dragging.enable(); map.scrollWheelZoom.enable(); 
+      }
+      updateModeIndicators();
   });
-  pixelBtn.addEventListener('click', ()=>{brushMode=false; eraser=false;});
-  brushBtn.addEventListener('click', ()=>{brushMode=true; eraser=false;});
-  eraserBtn.addEventListener('click', ()=>{eraser=true;});
+  pixelBtn.addEventListener('click', ()=>{pixelMode=true; brushMode=false; eraser=false; updateModeIndicators();});
+  brushBtn.addEventListener('click', ()=>{brushMode=true; pixelMode=false; eraser=false; updateModeIndicators();});
+  eraserBtn.addEventListener('click', ()=>{eraser=true; pixelMode=false; brushMode=false; updateModeIndicators();});
   sizeInput.addEventListener('input', e=>{size=parseInt(e.target.value);});
+
+  updateModeIndicators();
 
   // ===== USER AND DRAWINGS =====
   let allDrawings={}; 
@@ -86,6 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ===== DRAWING =====
   let currentStroke=null;
+
+  function getColor(){
+      if(eraser) return null; // null for eraser
+      if(brushMode) return "#00ffff";
+      return "#000"; // pixel mode
+  }
+
   canvas.addEventListener('mousedown', e=>{
       if(!drawMode || !currentUser) return;
       if(map.getZoom() < minZoomForDrawing){
@@ -93,17 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
       }
       drawing=true;
-      const color = eraser?'#ffffff':'#00ffff';
-      currentStroke={size, color, points:[{x:e.offsetX, y:e.offsetY}]};
+      const color = getColor();
+      currentStroke={size, color, points:[{x:e.offsetX, y:e.offsetY}], user: currentUser};
   });
 
   canvas.addEventListener('mousemove', e=>{
-      if(!drawing||!drawMode||!currentUser) return;
+      if(!drawing || !drawMode || !currentUser) return;
       const point={x:e.offsetX, y:e.offsetY};
       currentStroke.points.push(point);
       ctx.lineWidth=currentStroke.size;
       ctx.lineCap='round';
-      ctx.strokeStyle=currentStroke.color;
+      ctx.strokeStyle=currentStroke.color||"#ffffff";
       ctx.beginPath();
       const pts=currentStroke.points;
       ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y);
@@ -114,12 +134,27 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mouseup', e=>{
       if(drawing && currentStroke && currentUser){
           if(!allDrawings[currentUser]) allDrawings[currentUser]={strokes:[]};
-          allDrawings[currentUser].strokes.push(currentStroke);
+          if(eraser){
+              // Remove strokes intersecting currentStroke points (only your strokes)
+              const userStrokes = allDrawings[currentUser].strokes;
+              allDrawings[currentUser].strokes = userStrokes.filter(s=>{
+                  for(const p1 of s.points){
+                      for(const p2 of currentStroke.points){
+                          if(Math.abs(p1.x-p2.x)<size && Math.abs(p1.y-p2.y)<size) return false;
+                      }
+                  }
+                  return true;
+              });
+          } else {
+              allDrawings[currentUser].strokes.push(currentStroke);
+          }
           saveDrawings();
+          redrawCanvas();
           currentStroke=null;
       }
       drawing=false;
   });
+
   canvas.addEventListener('mouseout',()=>{drawing=false; currentStroke=null;});
 
   // ===== HOVER USERNAME =====

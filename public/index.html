@@ -2,78 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lplace.live - Classic</title>
-
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
- integrity="sha256-sA+oTy8XUo6K+5XkFiYChfbyYk/9K8g+lo2xV/9g6uM=" crossorigin=""/>
-
+<title>Lplace.live</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  html, body { margin:0; padding:0; height:100%; font-family: "Courier New", monospace; }
+  html, body { margin:0; padding:0; height:100%; font-family:monospace; }
   #map { width:100%; height:100%; z-index:0; }
-  #drawCanvas { position:absolute; top:0; left:0; z-index:10; }
-  
-  /* Classic retro tools */
+  #drawCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; cursor:crosshair; }
   #controls {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: #c0c0c0;
-    border: 3px solid #808080;
-    padding: 8px;
-    z-index: 20;
+    position:absolute; top:10px; left:10px; z-index:20; background:rgba(255,255,255,0.8); padding:10px; border-radius:5px;
+    display:flex; flex-direction:column; gap:5px;
   }
-  #controls button, #controls input[type=number] {
-    background:#e0e0e0;
-    border:2px solid #808080;
-    font-weight:bold;
-    padding:5px 10px;
-    margin:3px;
-    cursor:pointer;
-  }
-  #controls button:hover, #controls input[type=number]:hover { background:#d0d0d0; }
-  
-  nav {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index:20;
-  }
-  nav a {
-    display:inline-block;
-    padding:5px 10px;
-    background:#c0c0c0;
-    border:2px solid #808080;
-    font-weight:bold;
-    text-decoration:none;
-    color:#000;
-    margin-left:3px;
-  }
-  nav a:hover { background:#d0d0d0; }
+  #controls button,input { font-family:monospace; font-size:14px; }
 </style>
 </head>
 <body>
-
 <div id="map"></div>
 <canvas id="drawCanvas"></canvas>
 
 <div id="controls">
-  <button id="pixelBtn">Pixel</button>
-  <button id="brushBtn">Brush</button>
+  <button id="drawModeBtn">Toggle Draw Mode</button>
+  <button id="pixelBtn">Pixel Mode</button>
+  <button id="brushBtn">Brush Mode</button>
   <button id="eraserBtn">Eraser</button>
-  <input type="number" id="sizeInput" min="1" max="50" value="5">
-  <button id="drawModeBtn">Draw Mode</button>
+  <label>Size: <input type="number" id="sizeInput" value="5" min="1" max="50"></label>
 </div>
 
-<nav>
-  <a href="home.html">Home</a>
-</nav>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
- integrity="sha256-o9N1j7k8bkeG+4H7GHX6TJX7ktyN0G3F2fXQ+6twc2M=" crossorigin=""></script>
-
-<script src="client.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/client.js"></script>
 </body>
 </html>

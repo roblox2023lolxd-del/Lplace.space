@@ -1,71 +1,80 @@
-const map = L.map('map').setView([0, 0], 2);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+const socket = io();
 
-let drawMode = false;
-let brushMode = true;
-let eraserMode = false;
-let size = 5;
-let color = '#ff0000';
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
 let drawing = false;
-let currentStroke = [];
-let strokes = [];
+let tool = "pen";
+let color = "#000000";
+let size = 5;
+let eraserSize = 20;
 
-const canvasLayer = L.canvasLayer().delegate({
-  onDrawLayer: function(info) {
-    const ctx = info.canvas.getContext('2d');
-    ctx.clearRect(0,0,info.canvas.width, info.canvas.height);
-    strokes.forEach(s => {
-      ctx.strokeStyle = s.color;
-      ctx.lineWidth = s.size;
-      ctx.beginPath();
-      s.points.forEach((p,i) => {
-        const pos = info.layer._map.latLngToContainerPoint(p);
-        if(i===0) ctx.moveTo(pos.x,pos.y);
-        else ctx.lineTo(pos.x,pos.y);
-      });
-      ctx.stroke();
-    });
-  }
-}).addTo(map);
+// Toolbar elements
+const penBtn = document.getElementById("pen");
+const eraserBtn = document.getElementById("eraser");
+const logoutBtn = document.getElementById("logout");
+const penSizeInput = document.getElementById("penSize");
+const eraserSizeInput = document.getElementById("eraserSize");
+const colorPicker = document.getElementById("colorPicker");
+const tooltip = document.getElementById("tooltip");
 
-// Toolbar events
-document.getElementById('drawMode').onclick = ()=>drawMode=!drawMode;
-document.getElementById('brushMode').onclick = ()=>{brushMode=true; eraserMode=false;}
-document.getElementById('pixelMode').onclick = ()=>{brushMode=false; eraserMode=false;}
-document.getElementById('eraser').onclick = ()=>{eraserMode=true;}
-document.getElementById('size').onchange = e=>size=parseInt(e.target.value);
-document.getElementById('color').onchange = e=>color=e.target.value;
+penBtn.onclick = () => tool = "pen";
+eraserBtn.onclick = () => tool = "eraser";
+logoutBtn.onclick = () => {
+  fetch("/logout", { method: "POST" }).then(() => {
+    window.location.href = "/login.html";
+  });
+};
 
-// Mouse events
-map.on('mousedown', e=>{if(drawMode){drawing=true; currentStroke=[e.latlng];}});
-map.on('mousemove', e=>{
-  if(drawMode && drawing){
-    if(eraserMode){
-      strokes = strokes.filter(s=>!s.points.some(p=>p.distanceTo(e.latlng)<size));
-    } else {
-      currentStroke.push(e.latlng);
-    }
-    canvasLayer.redraw();
-  }
+penSizeInput.oninput = e => size = e.target.value;
+eraserSizeInput.oninput = e => eraserSize = e.target.value;
+colorPicker.oninput = e => color = e.target.value;
+
+canvas.addEventListener("mousedown", e => {
+  drawing = true;
+  draw(e);
 });
-map.on('mouseup', e=>{
-  if(drawing){
-    if(!eraserMode) strokes.push({points: currentStroke, color, size});
-    drawing=false; currentStroke=[];
-    canvasLayer.redraw();
-  }
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mouseout", () => drawing = false);
+canvas.addEventListener("mousemove", e => {
+  if (drawing) draw(e);
+  showTooltip(e);
 });
 
-// Save/load drawings
-async function save() {
-  await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pixels:{},strokes})});
+function draw(e) {
+  const x = e.clientX;
+  const y = e.clientY;
+
+  if (tool === "pen") {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    socket.emit("draw", { x, y, color, size, user: "You" });
+  } else if (tool === "eraser") {
+    ctx.clearRect(x - eraserSize / 2, y - eraserSize / 2, eraserSize, eraserSize);
+    socket.emit("erase", { x, y, size: eraserSize, user: "You" });
+  }
 }
-async function load() {
-  const res = await fetch('/load');
-  const data = await res.json();
-  if(data.strokes) strokes = data.strokes;
-  canvasLayer.redraw();
+
+function showTooltip(e) {
+  // Simple hover tooltip showing username (dummy here)
+  tooltip.style.display = "block";
+  tooltip.style.left = (e.clientX + 10) + "px";
+  tooltip.style.top = (e.clientY + 10) + "px";
+  tooltip.textContent = "User: You";
 }
-load();
+
+// Listen for others drawing
+socket.on("draw", data => {
+  ctx.fillStyle = data.color;
+  ctx.beginPath();
+  ctx.arc(data.x, data.y, data.size / 2, 0, Math.PI * 2);
+  ctx.fill();
+});
+
+socket.on("erase", data => {
+  ctx.clearRect(data.x - data.size / 2, data.y - data.size / 2, data.size, data.size);
+});

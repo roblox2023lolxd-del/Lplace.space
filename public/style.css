@@ -1,0 +1,5 @@
+body { margin:0; font-family:sans-serif; }
+#loginForm { max-width:300px; margin:100px auto; text-align:center; }
+#loginForm input { width:90%; margin:5px 0; padding:5px; }
+#toolbar { position:absolute; top:10px; left:10px; background:rgba(255,255,255,0.8); padding:5px; border-radius:5px; z-index:1000; }
+#toolbar button.active { background: #4CAF50; color:white; }

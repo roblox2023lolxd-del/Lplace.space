@@ -1,0 +1,1352 @@
+{
+  "Owner": {
+    "pixels": {
+      "1112,596": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,596": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,596": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,596": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,597": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1108,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1107,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1106,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1106,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,601": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1103,601": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1103,602": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,602": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,603": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,604": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,605": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,605": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,606": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,607": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,608": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,609": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,610": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,611": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,612": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1103,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,617": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,620": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1106,622": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1107,623": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1108,625": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1108,626": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,626": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,627": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,628": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,628": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,629": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,630": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,631": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,632": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,633": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,634": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,635": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,635": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,636": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,637": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,638": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,639": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,640": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,641": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,642": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,643": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,645": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,646": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,647": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,648": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,649": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,650": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1111,651": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,651": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,652": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1110,653": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,653": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1109,654": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1108,655": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1108,656": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1107,656": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1107,657": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1107,658": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1106,658": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,659": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1105,660": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,661": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1104,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1103,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1102,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1101,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1100,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1100,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1099,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1098,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1123,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1123,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1124,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1124,617": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1124,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1125,619": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1125,620": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1125,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1126,623": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1126,625": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1126,627": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1127,629": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1128,631": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1128,634": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1129,636": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1130,639": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1130,641": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1131,643": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1131,645": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1132,648": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1133,650": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1134,652": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1134,654": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1135,655": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1135,656": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1135,658": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1136,659": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1137,660": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1137,661": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1138,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1138,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1139,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1140,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1141,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1142,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1143,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1144,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1145,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1146,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1147,664": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1147,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1148,663": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1148,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1149,662": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1149,661": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1150,661": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1150,660": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1151,660": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1151,659": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1152,659": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1152,658": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1153,657": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1154,656": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1154,655": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1155,654": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1156,652": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1156,651": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1156,650": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1157,649": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1157,648": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1158,647": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1159,645": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1159,644": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1159,642": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1160,641": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1160,639": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1160,637": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1161,635": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1161,633": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1162,631": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1162,629": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1162,627": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1163,625": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1163,623": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1163,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1163,619": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1163,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,612": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,610": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,609": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,608": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,606": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,605": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,604": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,603": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1164,602": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,655": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,654": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,653": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,652": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,651": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,650": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,649": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,648": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,646": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,645": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,643": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,641": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,640": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,639": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,636": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,634": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,631": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,627": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,625": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,622": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,620": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,611": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,610": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,608": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,606": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,605": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,603": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,601": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1191,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1192,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1193,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1194,598": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1194,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1195,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1196,599": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1196,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1197,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1198,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1199,600": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1199,601": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1200,601": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1201,602": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1202,602": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1202,603": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1203,603": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1203,604": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,604": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,605": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,606": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,607": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,608": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1204,609": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1203,609": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1203,610": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1202,610": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1202,611": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1202,612": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1201,612": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1201,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1200,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1199,613": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1199,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1198,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1197,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1196,614": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1196,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1195,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1194,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1193,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1192,615": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1192,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1191,616": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1190,617": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1189,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,618": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1188,619": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1187,619": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1186,620": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1185,620": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1185,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1184,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1183,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      },
+      "1182,621": {
+        "color": "#ff0000",
+        "size": 10,
+        "user": "Owner"
+      }
+    },
+    "strokes": []
+  }
+}

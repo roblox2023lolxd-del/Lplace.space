@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lplace.live</title>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Client JS -->
+  <script src="client.js" defer></script>
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+    #map { width: 100vw; height: 100vh; position: relative; }
+    #toolbar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 5px;
+      border-radius: 5px;
+      z-index: 1000;
+      font-family: sans-serif;
+    }
+    #toolbar button.active { background: #4caf50; color: #fff; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="toolbar">
+    <button id="toggleDraw">Draw</button>
+    <button id="toggleEraser">Eraser</button>
+    <button id="toggleBrush">Brush Mode</button>
+    Color: <input type="color" id="color" value="#ff0000">
+    Size: <input type="range" id="size" min="1" max="50" value="10">
+    <button id="logout">Logout</button>
+  </div>
+</body>
+</html>

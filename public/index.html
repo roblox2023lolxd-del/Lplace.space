@@ -2,32 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Lplace.live</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-  html, body { margin:0; padding:0; height:100%; font-family:monospace; }
-  #map { width:100%; height:100%; z-index:0; }
-  #drawCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; cursor:crosshair; }
-  #controls {
-    position:absolute; top:10px; left:10px; z-index:20; background:rgba(255,255,255,0.8); padding:10px; border-radius:5px;
-    display:flex; flex-direction:column; gap:5px;
-  }
-  #controls button,input { font-family:monospace; font-size:14px; }
-</style>
+<title>Lplace Live</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="map"></div>
-<canvas id="drawCanvas"></canvas>
+<h1>Lplace.live Map</h1>
 
-<div id="controls">
-  <button id="drawModeBtn">Toggle Draw Mode</button>
-  <button id="pixelBtn">Pixel Mode</button>
-  <button id="brushBtn">Brush Mode</button>
-  <button id="eraserBtn">Eraser</button>
-  <label>Size: <input type="number" id="sizeInput" value="5" min="1" max="50"></label>
+<div id="toolbar">
+  <button onclick="toggleDrawMode()">Toggle Draw Mode</button>
+  <button onclick="tool='pixel'">Pixel</button>
+  <button onclick="tool='brush'">Brush</button>
+  <button onclick="tool='eraser'">Eraser</button>
+  <label>Brush size: <input type="number" id="brush-size" value="5" onchange="brushSize=parseInt(this.value)"></label>
+  <button onclick="logout()">Logout</button>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/client.js"></script>
+<canvas id="mapCanvas" style="border:1px solid #000;"></canvas>
+
+<script src="client.js"></script>
+<script>
+async function logout() {
+  await fetch("/logout", { method:"POST" });
+  window.location.href = "/login.html";
+}
+
+function toggleDrawMode() {
+  drawMode = !drawMode;
+  document.body.style.cursor = drawMode ? "crosshair" : "default";
+}
+</script>
 </body>
 </html>

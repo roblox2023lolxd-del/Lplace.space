@@ -1,39 +1,49 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-  // MAP
+  // ===== MAP SETUP =====
   const map = L.map('map').setView([40.7128, -74.006], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:'&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // CANVAS
+  // ===== CANVAS SETUP =====
   const canvas = document.getElementById('drawCanvas');
   const ctx = canvas.getContext('2d');
   function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // CONTROLS
+  // ===== CONTROLS =====
   let drawMode=false, drawing=false, eraser=false, brushMode=false;
   let size=parseInt(document.getElementById('sizeInput').value);
   const minZoomForDrawing = 10;
-  document.getElementById('drawModeBtn').onclick = ()=>{
+
+  const drawModeBtn=document.getElementById('drawModeBtn');
+  const pixelBtn=document.getElementById('pixelBtn');
+  const brushBtn=document.getElementById('brushBtn');
+  const eraserBtn=document.getElementById('eraserBtn');
+  const sizeInput=document.getElementById('sizeInput');
+
+  drawModeBtn.addEventListener('click', ()=>{
       drawMode=!drawMode;
       if(drawMode){ map.dragging.disable(); map.scrollWheelZoom.disable(); }
       else{ map.dragging.enable(); map.scrollWheelZoom.enable(); }
-  };
-  document.getElementById('pixelBtn').onclick=()=>{brushMode=false; eraser=false;};
-  document.getElementById('brushBtn').onclick=()=>{brushMode=true; eraser=false;};
-  document.getElementById('eraserBtn').onclick=()=>{eraser=true;};
-  document.getElementById('sizeInput').oninput=e=>{size=parseInt(e.target.value);};
+  });
+  pixelBtn.addEventListener('click', ()=>{brushMode=false; eraser=false;});
+  brushBtn.addEventListener('click', ()=>{brushMode=true; eraser=false;});
+  eraserBtn.addEventListener('click', ()=>{eraser=true;});
+  sizeInput.addEventListener('input', e=>{size=parseInt(e.target.value);});
 
-  // DRAWINGS
+  // ===== USER AND DRAWINGS =====
   let allDrawings={}; 
   let currentUser=null;
 
-  // Fetch logged-in user
   fetch('/me').then(r=>r.json()).then(data=>{ 
       currentUser=data.user; 
+      if(!currentUser){
+          alert("Not logged in! Redirecting to login.");
+          window.location.href="/login.html";
+      }
       loadDrawings(); 
   });
 
@@ -74,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   }
 
-  // DRAWING LOGIC
+  // ===== DRAWING =====
   let currentStroke=null;
   canvas.addEventListener('mousedown', e=>{
       if(!drawMode || !currentUser) return;
@@ -86,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const color = eraser?'#ffffff':'#00ffff';
       currentStroke={size, color, points:[{x:e.offsetX, y:e.offsetY}]};
   });
+
   canvas.addEventListener('mousemove', e=>{
       if(!drawing||!drawMode||!currentUser) return;
       const point={x:e.offsetX, y:e.offsetY};
@@ -99,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
       ctx.stroke();
   });
+
   canvas.addEventListener('mouseup', e=>{
       if(drawing && currentStroke && currentUser){
           if(!allDrawings[currentUser]) allDrawings[currentUser]={strokes:[]};
@@ -110,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   canvas.addEventListener('mouseout',()=>{drawing=false; currentStroke=null;});
 
-  // Hover username
+  // ===== HOVER USERNAME =====
   canvas.addEventListener('mousemove', e=>{
       let hoverUser=null;
       for(const user in allDrawings){
@@ -126,9 +138,22 @@ document.addEventListener('DOMContentLoaded', () => {
       canvas.title = hoverUser?`Drawing by: ${hoverUser}`:'';
   });
 
-  // Cursor for zoom restriction
+  // ===== CURSOR =====
   map.on('zoomend', ()=>{
       canvas.style.cursor = map.getZoom() < minZoomForDrawing ? 'not-allowed':'crosshair';
+  });
+
+  // ===== LOGOUT BUTTON =====
+  const logoutBtn=document.createElement('button');
+  logoutBtn.textContent="Logout";
+  logoutBtn.style.position="absolute";
+  logoutBtn.style.top="10px";
+  logoutBtn.style.right="10px";
+  logoutBtn.style.zIndex=20;
+  logoutBtn.style.fontFamily="monospace";
+  document.body.appendChild(logoutBtn);
+  logoutBtn.addEventListener('click', ()=>{
+      fetch('/logout',{method:'POST'}).then(()=>window.location.href="/login.html");
   });
 
 });

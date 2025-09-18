@@ -1,119 +1,126 @@
-let currentUser = null;
-let drawMode = false;
-let tool = "pixel"; // pixel/brush/eraser
-let brushSize = 5;
-let strokes = [];
-
-let map, canvas, ctx;
-
 // Initialize map
-window.onload = async () => {
-  // Leaflet map
-  map = L.map('map').setView([20, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
+const map = L.map('map').setView([40.7128, -74.006], 13); // Default NYC
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+}).addTo(map);
 
-  // Canvas overlay
-  canvas = document.getElementById('drawCanvas');
-  ctx = canvas.getContext('2d');
-  resizeCanvas();
-
-  window.addEventListener('resize', resizeCanvas);
-
-  // Check logged in user
-  const userRes = await fetch("/me");
-  const data = await userRes.json();
-  currentUser = data.user;
-
-  if(currentUser) await loadDrawings();
-
-  setupDrawing();
-  setupUI();
-};
+// Canvas setup
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
 
-// Drawing
-function setupDrawing() {
-  let drawing = false;
+// Controls
+let drawMode = false, drawing = false, eraser = false, brushMode = false;
+let size = parseInt(document.getElementById('sizeInput').value);
 
-  canvas.addEventListener("mousedown", e => {
-    if(!drawMode) return;
-    drawing = true;
-  });
+document.getElementById('drawModeBtn').onclick = () => {
+    drawMode = !drawMode;
+    map.dragging[drawMode ? 'disable' : 'enable']();
+    map.scrollWheelZoom[drawMode ? 'disable' : 'enable']();
+};
+document.getElementById('pixelBtn').onclick = () => { brushMode=false; eraser=false; };
+document.getElementById('brushBtn').onclick = () => { brushMode=true; eraser=false; };
+document.getElementById('eraserBtn').onclick = () => { eraser=true; };
+document.getElementById('sizeInput').oninput = e => { size=parseInt(e.target.value); };
 
-  canvas.addEventListener("mouseup", e => {
-    if(!drawMode) return;
-    drawing = false;
-    saveDrawings();
-  });
+// Track all drawings in memory
+let allDrawings = {}; // { username: { strokes: [...] } }
+let currentUser = null;
 
-  canvas.addEventListener("mousemove", e => {
-    if(!drawMode || !drawing) return;
+// Fetch logged-in user
+fetch('/me').then(r => r.json()).then(data => { currentUser = data.user; loadDrawings(); });
 
-    const x = e.offsetX;
-    const y = e.offsetY;
-
-    if(tool === "pixel") {
-      ctx.fillStyle = "red";
-      ctx.fillRect(x,y,1,1);
-      strokes.push({x,y,tool:"pixel"});
-    } else if(tool === "brush") {
-      ctx.fillStyle = "blue";
-      ctx.beginPath();
-      ctx.arc(x,y,brushSize,0,Math.PI*2);
-      ctx.fill();
-      strokes.push({x,y,tool:"brush",size:brushSize});
-    } else if(tool === "eraser") {
-      ctx.clearRect(x-brushSize/2, y-brushSize/2, brushSize, brushSize);
-      strokes.push({x,y,tool:"eraser",size:brushSize});
-    }
-  });
+// Load existing drawings
+function loadDrawings() {
+    fetch('/load').then(r=>r.json()).then(userDrawings=>{
+        if(userDrawings) allDrawings[currentUser] = userDrawings;
+        fetch('/allDrawings').then(r=>r.json()).then(all=>{
+            allDrawings = all; redrawCanvas();
+        });
+    });
 }
 
 // Save drawings
-async function saveDrawings() {
-  if(!currentUser) return;
-  await fetch("/save", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({strokes})
-  });
+function saveDrawings() {
+    if(!currentUser) return;
+    fetch('/save', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(allDrawings[currentUser])
+    });
 }
 
-// Load drawings
-async function loadDrawings() {
-  const res = await fetch("/load");
-  const data = await res.json();
-  strokes = data.strokes || [];
-  drawLoadedStrokes();
+// Redraw all users' drawings
+function redrawCanvas() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(const user in allDrawings){
+        const strokes = allDrawings[user].strokes || [];
+        strokes.forEach(s=>{
+            ctx.lineWidth = s.size;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = s.color;
+            ctx.beginPath();
+            for(let i=0;i<s.points.length;i++){
+                const p = s.points[i];
+                if(i===0) ctx.moveTo(p.x,p.y);
+                else ctx.lineTo(p.x,p.y);
+            }
+            ctx.stroke();
+        });
+    }
 }
 
-function drawLoadedStrokes() {
-  for(let s of strokes) {
-    if(s.tool==="pixel") ctx.fillRect(s.x,s.y,1,1);
-    if(s.tool==="brush") { ctx.beginPath(); ctx.arc(s.x,s.y,s.size,0,Math.PI*2); ctx.fill(); }
-    if(s.tool==="eraser") ctx.clearRect(s.x-s.size/2,s.y-s.size/2,s.size,s.size);
-  }
-}
+// Drawing logic
+let currentStroke = null;
+canvas.addEventListener('mousedown',e=>{
+    if(!drawMode || !currentUser) return;
+    drawing=true;
+    const color = eraser?'#ffffff':'#00ffff';
+    currentStroke = { size, color, points:[{x:e.offsetX,y:e.offsetY}] };
+});
+canvas.addEventListener('mousemove',e=>{
+    if(!drawing || !drawMode || !currentUser) return;
+    const point = {x:e.offsetX,y:e.offsetY};
+    currentStroke.points.push(point);
+    // Draw in real-time
+    ctx.lineWidth = currentStroke.size;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = currentStroke.color;
+    ctx.beginPath();
+    const pts = currentStroke.points;
+    ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y);
+    ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+    ctx.stroke();
+});
+canvas.addEventListener('mouseup',e=>{
+    if(drawing && currentStroke && currentUser){
+        if(!allDrawings[currentUser]) allDrawings[currentUser] = { strokes: [] };
+        allDrawings[currentUser].strokes.push(currentStroke);
+        saveDrawings();
+        currentStroke=null;
+    }
+    drawing=false;
+});
+canvas.addEventListener('mouseout',()=>{drawing=false; currentStroke=null;});
 
-// UI
-function setupUI() {
-  document.getElementById("pixelBtn").onclick = () => tool="pixel";
-  document.getElementById("brushBtn").onclick = () => tool="brush";
-  document.getElementById("eraserBtn").onclick = () => tool="eraser";
-  document.getElementById("sizeInput").oninput = e => brushSize = parseInt(e.target.value);
-
-  document.getElementById("drawModeBtn").onclick = () => {
-    drawMode = !drawMode;
-    canvas.style.pointerEvents = drawMode ? "auto" : "none";
-    map.dragging[drawMode ? "disable":"enable"]();
-    map.scrollWheelZoom[drawMode ? "disable":"enable"]();
-    canvas.style.cursor = drawMode ? "crosshair":"default";
-  };
-}
+// Hover user display
+canvas.addEventListener('mousemove',e=>{
+    let hoverUser = null;
+    for(const user in allDrawings){
+        if(user===currentUser) continue;
+        allDrawings[user].strokes.forEach(s=>{
+            s.points.forEach(p=>{
+                if(Math.abs(p.x-e.offsetX)<size && Math.abs(p.y-e.offsetY)<size){
+                    hoverUser=user;
+                }
+            });
+        });
+    }
+    canvas.title = hoverUser?`Drawing by: ${hoverUser}`:'';
+});

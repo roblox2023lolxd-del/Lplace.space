@@ -10,8 +10,9 @@
  integrity="sha256-sA+oTy8XUo6K+5XkFiYChfbyYk/9K8g+lo2xV/9g6uM=" crossorigin=""/>
 
 <style>
-  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
-  #map { width:100%; height:100%; }
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: Arial, sans-serif; }
+  #map { width: 100%; height: 100%; }
+  #drawCanvas { position:absolute; top:0; left:0; z-index: 500; }
   #controls {
     position: fixed;
     top: 10px;
@@ -19,9 +20,9 @@
     background: rgba(30,30,30,0.9);
     padding: 10px;
     border-radius: 8px;
-    z-index: 1000;
+    z-index: 1001;
   }
-  #controls button, #controls input {
+  #controls button, #controls input[type=number] {
     margin: 5px 5px 5px 0;
     padding: 8px 12px;
     border: none;
@@ -29,17 +30,15 @@
     font-weight: bold;
     cursor: pointer;
     transition: 0.2s;
-  }
-  #controls button:hover, #controls input:hover {
     background: #00ffff;
     color: #121212;
   }
-  canvas { position:absolute; top:0; left:0; z-index: 500; pointer-events:none; }
+  #controls button:hover, #controls input[type=number]:hover { background: #00bfbf; }
   nav {
     position: fixed;
     top: 10px;
     right: 10px;
-    z-index: 1001;
+    z-index: 1002;
   }
   nav a {
     padding: 8px 12px;
@@ -59,8 +58,8 @@
 <canvas id="drawCanvas"></canvas>
 
 <div id="controls">
-  <button id="pixelBtn">Pixel</button>
-  <button id="brushBtn">Brush</button>
+  <button id="pixelBtn">Pixel Mode</button>
+  <button id="brushBtn">Brush Mode</button>
   <button id="eraserBtn">Eraser</button>
   <input type="number" id="sizeInput" min="1" max="50" value="5">
   <button id="drawModeBtn">Toggle Draw Mode</button>

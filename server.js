@@ -5,7 +5,7 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render sets PORT automatically
+const PORT = process.env.PORT || 10000; // Render uses PORT env
 
 // Paths to data files
 const usersFile = path.join(__dirname, "users.json");
@@ -21,62 +21,66 @@ app.use(session({
   secret: "lplace-secret",
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Render uses HTTP, not HTTPS by default
+  cookie: { secure: false } // MemoryStore for dev/testing
 }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Signup route
 app.post("/signup", (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.json({ success: false, message: "Missing username or password" });
-  if (users[username]) return res.json({ success: false, message: "User already exists" });
+  if(!username || !password) return res.json({ success:false, message:"Missing username/password" });
+  if(users[username]) return res.json({ success:false, message:"User already exists" });
 
   users[username] = { password };
-  drawings[username] = { pixels: {}, strokes: [] };
+  drawings[username] = { strokes: [], pixels: {} };
 
   fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
   fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
 
   req.session.user = username; // Log in immediately
-  res.json({ success: true });
+  res.json({ success:true });
 });
 
 // Login route
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.json({ success: false, message: "Missing username or password" });
-  if (!users[username] || users[username].password !== password) {
-    return res.json({ success: false, message: "Invalid credentials" });
+  if(!username || !password) return res.json({ success:false, message:"Missing username/password" });
+  if(!users[username] || users[username].password !== password) {
+    return res.json({ success:false, message:"Invalid credentials" });
   }
 
   req.session.user = username;
-  res.json({ success: true });
+  res.json({ success:true });
 });
 
 // Logout route
 app.post("/logout", (req, res) => {
-  req.session.destroy(() => res.json({ success: true }));
+  req.session.destroy(() => res.json({ success:true }));
 });
 
-// Get current logged-in user
-app.get("/me", (req, res) => {
-  if (!req.session.user) return res.json({ user: null });
+// Get current user
+app.get("/me", (req,res) => {
+  if(!req.session.user) return res.json({ user: null });
   res.json({ user: req.session.user });
 });
 
-// Save drawings
-app.post("/save", (req, res) => {
-  if (!req.session.user) return res.json({ success: false, message: "Not logged in" });
-
+// Save current user's drawings
+app.post("/save", (req,res) => {
+  if(!req.session.user) return res.json({ success:false, message:"Not logged in" });
   drawings[req.session.user] = req.body;
   fs.writeFileSync(drawingsFile, JSON.stringify(drawings, null, 2));
-  res.json({ success: true });
+  res.json({ success:true });
 });
 
-// Load drawings
-app.get("/load", (req, res) => {
-  if (!req.session.user) return res.json({ success: false });
-  res.json(drawings[req.session.user] || { pixels: {}, strokes: [] });
+// Load current user's drawings
+app.get("/load", (req,res) => {
+  if(!req.session.user) return res.json({ success:false });
+  res.json(drawings[req.session.user] || { strokes: [], pixels: {} });
+});
+
+// Get all users' drawings for multiplayer
+app.get("/allDrawings", (req,res) => {
+  res.json(drawings);
 });
 
 // Start server

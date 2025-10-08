@@ -1,80 +1,46 @@
 const socket = io();
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const colorPicker = document.getElementById("colorPicker");
+const sizePicker = document.getElementById("sizePicker");
+const clearBtn = document.getElementById("clearBtn");
+const eraserBtn = document.getElementById("eraserBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+
+let drawing = false;
+let color = colorPicker.value;
+let size = sizePicker.value;
+let erasing = false;
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let drawing = false;
-let tool = "pen";
-let color = "#000000";
-let size = 5;
-let eraserSize = 20;
+colorPicker.oninput = (e) => (color = e.target.value);
+sizePicker.oninput = (e) => (size = e.target.value);
+eraserBtn.onclick = () => (erasing = !erasing, eraserBtn.textContent = erasing ? "✏️ Draw" : "🩹 Eraser");
+logoutBtn.onclick = () => (localStorage.removeItem("user"), window.location.href = "/");
 
-// Toolbar elements
-const penBtn = document.getElementById("pen");
-const eraserBtn = document.getElementById("eraser");
-const logoutBtn = document.getElementById("logout");
-const penSizeInput = document.getElementById("penSize");
-const eraserSizeInput = document.getElementById("eraserSize");
-const colorPicker = document.getElementById("colorPicker");
-const tooltip = document.getElementById("tooltip");
+clearBtn.onclick = () => socket.emit("clear");
 
-penBtn.onclick = () => tool = "pen";
-eraserBtn.onclick = () => tool = "eraser";
-logoutBtn.onclick = () => {
-  fetch("/logout", { method: "POST" }).then(() => {
-    window.location.href = "/login.html";
-  });
-};
-
-penSizeInput.oninput = e => size = e.target.value;
-eraserSizeInput.oninput = e => eraserSize = e.target.value;
-colorPicker.oninput = e => color = e.target.value;
-
-canvas.addEventListener("mousedown", e => {
-  drawing = true;
-  draw(e);
-});
-canvas.addEventListener("mouseup", () => drawing = false);
-canvas.addEventListener("mouseout", () => drawing = false);
-canvas.addEventListener("mousemove", e => {
-  if (drawing) draw(e);
-  showTooltip(e);
-});
-
-function draw(e) {
+canvas.onmousedown = () => (drawing = true);
+canvas.onmouseup = () => (drawing = false);
+canvas.onmouseout = () => (drawing = false);
+canvas.onmousemove = (e) => {
+  if (!drawing) return;
   const x = e.clientX;
   const y = e.clientY;
+  const drawData = { x, y, color: erasing ? "#f5f5f5" : color, size };
+  draw(drawData);
+  socket.emit("draw", drawData);
+};
 
-  if (tool === "pen") {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-    ctx.fill();
-    socket.emit("draw", { x, y, color, size, user: "You" });
-  } else if (tool === "eraser") {
-    ctx.clearRect(x - eraserSize / 2, y - eraserSize / 2, eraserSize, eraserSize);
-    socket.emit("erase", { x, y, size: eraserSize, user: "You" });
-  }
-}
+socket.on("draw", draw);
+socket.on("loadDrawings", (all) => all.forEach(draw));
+socket.on("clear", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
-function showTooltip(e) {
-  // Simple hover tooltip showing username (dummy here)
-  tooltip.style.display = "block";
-  tooltip.style.left = (e.clientX + 10) + "px";
-  tooltip.style.top = (e.clientY + 10) + "px";
-  tooltip.textContent = "User: You";
-}
-
-// Listen for others drawing
-socket.on("draw", data => {
-  ctx.fillStyle = data.color;
+function draw({ x, y, color, size }) {
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(data.x, data.y, data.size / 2, 0, Math.PI * 2);
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
   ctx.fill();
-});
-
-socket.on("erase", data => {
-  ctx.clearRect(data.x - data.size / 2, data.y - data.size / 2, data.size, data.size);
-});
+}

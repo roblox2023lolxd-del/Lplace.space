@@ -16,8 +16,11 @@ app.logger.setLevel(logging.INFO)
 ROBLOX_API = 'https://users.roblox.com/v1/usernames/users'
 
 # Word lists for rank-style names
-PREFIXES = ['pro', 'elite', 'mega', 'ultra', 'super', 'noob', 'god', 'king', 'queen', 'dark', 'light', 'fire', 'ice', 'shadow', 'storm']
-SUFFIXES = ['gamer', 'player', 'pro', 'master', 'ninja', 'boss', 'hero', 'legend', 'warrior', 'slayer', 'x', 'z', '123']
+PREFIXES = ['pro', 'elite', 'mega', 'ultra', 'super', 'noob', 'god', 'king', 'queen', 'dark', 'light', 'fire', 'ice', 'shadow', 'storm', 'star', 'galaxy', 'elf', 'dragon', 'ninja', 'samurai']
+SUFFIXES = ['gamer', 'player', 'pro', 'master', 'ninja', 'boss', 'hero', 'legend', 'warrior', 'slayer', 'x', 'z', '123', 'star', 'bolt', 'blade', 'flame', 'frost', 'void', 'aura']
+
+# Leet replacements
+LEET_MAP = {'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7'}
 
 def is_valid_username(username):
     """Check if username follows Roblox rules: 3-20 chars, alphanumeric + one _, no leading/trailing _"""
@@ -43,7 +46,6 @@ def generate_usernames(style, length, base=None, count=10):
             if random.random() < 0.3 and length > 4:
                 pos = random.randint(1, length-2)
                 username = username[:pos] + '_' + username[pos:]
-                length += 1  # Adjust if needed, but cap at 20
                 if len(username) > 20:
                     continue
         elif style == 'rank':
@@ -61,6 +63,46 @@ def generate_usernames(style, length, base=None, count=10):
             if random.random() < 0.2 and length > 4:
                 pos = random.randint(1, len(username)-2)
                 username = username[:pos] + '_' + username[pos:]
+        elif style == 'aesthetic':
+            # Minimal, vowel-less + _ for style
+            consonants = 'bcdfghjklmnpqrstvwxyz'
+            username = ''.join(random.choices(consonants + string.digits, k=length))
+            # Add _ in middle for aesthetic
+            if length > 3:
+                pos = length // 2
+                username = username[:pos] + '_' + username[pos:]
+        elif style == 'leet':
+            # Base word with leet speak
+            base_word = base or ''.join(random.choices(string.ascii_lowercase, k=4))
+            username = ''
+            for char in base_word.lower():
+                username += LEET_MAP.get(char, char)
+            # Pad/truncate to length with digits
+            num_chars = length - len(username)
+            if num_chars > 0:
+                username += ''.join(random.choices(string.digits, k=num_chars))
+            elif num_chars < 0:
+                username = username[:length]
+            # Add random _ if fits
+            if random.random() < 0.4 and length > 4 and '_' not in username:
+                pos = random.randint(1, len(username)-2)
+                username = username[:pos] + '_' + username[pos:]
+        elif style == 'themed' and base:
+            # Themes based on base (e.g., if base='space', use space words)
+            themes = {
+                'space': ['star', 'galaxy', 'cosmo', 'nova', 'orbit'],
+                'fantasy': ['elf', 'dragon', 'wizard', 'quest', 'myth'],
+                'gaming': ['pixel', 'level', 'quest', 'spawn', 'glitch']
+            }
+            theme_words = themes.get(base.lower(), random.choice(list(themes.values())))
+            word1 = random.choice(theme_words)
+            word2 = random.choice(PREFIXES + SUFFIXES)
+            username = word1 + word2
+            # Adjust length
+            if len(username) > length:
+                username = username[:length]
+            elif len(username) < length:
+                username += ''.join(random.choices(string.digits, k=length - len(username)))
         elif style == 'custom' and base:
             # Variations on base
             variations = [
@@ -110,7 +152,7 @@ def index():
     if request.method == 'POST':
         length = int(request.form.get('length', 8))
         style = request.form.get('style', 'unique')
-        base = request.form.get('base', '') if style == 'custom' else None
+        base = request.form.get('base', '') if style in ['custom', 'themed'] else None
         count = int(request.form.get('count', 10))
         
         generated = generate_usernames(style, length, base, count)
@@ -144,7 +186,7 @@ def index():
     </head>
     <body>
         <h1>Roblox Rare Username Generator</h1>
-        <form method="POST">
+        <form method="POST" id="genForm">
             <label>Username Length (3-20):</label>
             <input type="number" name="length" min="3" max="20" value="8" required>
             
@@ -152,12 +194,15 @@ def index():
             <select name="style" id="style">
                 <option value="unique">Unique (Random)</option>
                 <option value="rank">Rank Names (e.g., ProGamer)</option>
+                <option value="aesthetic">Aesthetic (Minimal + _)</option>
+                <option value="leet">Leet Speak (3l33t style)</option>
+                <option value="themed">Themed (Enter theme below)</option>
                 <option value="custom">Custom (Enter base below)</option>
             </select>
             
             <div id="custom-input" style="display:none;">
-                <label>Base Word (e.g., Roblox):</label>
-                <input type="text" name="base" placeholder="Enter base word">
+                <label>Base/Theme Word (e.g., Roblox or space):</label>
+                <input type="text" name="base" placeholder="Enter base word or theme">
             </div>
             
             <label>Number to Generate:</label>
@@ -178,12 +223,50 @@ def index():
         </div>
         {% endif %}
         
-        <script>
-            document.getElementById('style').addEventListener('change', function() {
-                document.getElementById('custom-input').style.display = this.value === 'custom' ? 'block' : 'none';
-            });
-        </script>
         <p>More generators for other sites coming soon! Note: Availability can change quickly.</p>
+        
+        <script>
+            const form = document.getElementById('genForm');
+            const styleSelect = document.getElementById('style');
+            const customInput = document.getElementById('custom-input');
+            
+            // Load saved values
+            function loadSaved() {
+                const saved = JSON.parse(localStorage.getItem('usernameGen') || '{}');
+                form.length.value = saved.length || 8;
+                form.count.value = saved.count || 10;
+                styleSelect.value = saved.style || 'unique';
+                if (saved.base) {
+                    form.base.value = saved.base;
+                }
+                toggleCustom();
+            }
+            
+            // Save on change
+            form.addEventListener('input', function(e) {
+                const data = {
+                    length: form.length.value,
+                    count: form.count.value,
+                    style: styleSelect.value,
+                    base: form.base ? form.base.value : ''
+                };
+                localStorage.setItem('usernameGen', JSON.stringify(data));
+            });
+            
+            // Toggle custom input
+            function toggleCustom() {
+                customInput.style.display = (styleSelect.value === 'custom' || styleSelect.value === 'themed') ? 'block' : 'none';
+            }
+            
+            styleSelect.addEventListener('change', function() {
+                toggleCustom();
+                // Trigger save
+                form.dispatchEvent(new Event('input'));
+            });
+            
+            // Initial load
+            loadSaved();
+        </script>
     </body>
     </html>
     '''

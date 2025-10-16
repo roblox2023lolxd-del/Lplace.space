@@ -11,12 +11,21 @@ app = Flask(__name__)
 COUNTER_FILE = 'view_count.json'
 
 # Threshold in seconds (e.g., 1 hour = 3600) to count as a new view
-VIEW_THRESHOLD = 86400
+VIEW_THRESHOLD = 3600
 
 def load_data():
     if os.path.exists(COUNTER_FILE):
-        with open(COUNTER_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(COUNTER_FILE, 'r') as f:
+                content = f.read().strip()
+                if content:  # Check if file has content
+                    return json.loads(content)
+                else:
+                    # Empty file: treat as new
+                    return {'total_views': 0, 'visits': {}}
+        except (json.JSONDecodeError, ValueError):
+            # Invalid JSON: reset to defaults
+            return {'total_views': 0, 'visits': {}}
     return {'total_views': 0, 'visits': {}}
 
 def save_data(data):

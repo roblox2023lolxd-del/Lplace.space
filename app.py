@@ -1,96 +1,108 @@
 from flask import Flask, render_template_string, request
-import json
-import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import time
 import hashlib
 import requests
 import logging
+import os
 
 app = Flask(__name__)
 
-# Set up logging
+# Supabase connection (replace with yours from Step 1)
+DB_URI = os.environ.get('DATABASE_URL', 'your_supabase_connection_string_here')  # Use env var in Render!
+
+# Threshold in seconds (1 hour)
+VIEW_THRESHOLD = 3600
+
+# Logging
 logging.basicConfig(level=logging.INFO)
 app.logger.setLevel(logging.INFO)
 
-# File to store the view count and visit data
-COUNTER_FILE = 'view_count.json'
+def get_db_connection():
+    return psycopg2.connect(DB_URI, sslmode='require')
 
-# Threshold in seconds (e.g., 1 hour = 3600) to count as a new view
-VIEW_THRESHOLD = 3600
-
-def load_data():
-    if os.path.exists(COUNTER_FILE):
-        try:
-            with open(COUNTER_FILE, 'r') as f:
-                content = f.read().strip()
-                if content:
-                    return json.loads(content)
-                else:
-                    return {'total_views': 0, 'visits': {}}
-        except (json.JSONDecodeError, ValueError):
-            app.logger.error("Invalid JSON in counter file - resetting")
-            return {'total_views': 0, 'visits': {}}
-    return {'total_views': 0, 'visits': {}}
-
-def save_data(data):
-    try:
-        with open(COUNTER_FILE, 'w') as f:
-            json.dump(data, f)
-        app.logger.info("Data saved successfully")
-    except Exception as e:
-        app.logger.error(f"Failed to save data: {e}")
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Create tables if not exist
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value INTEGER
+        );
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS visits (
+            unique_id TEXT PRIMARY KEY,
+            last_visit TIMESTAMP
+        );
+    """)
+    # Init total_views to 0 if missing
+    cur.execute("INSERT INTO settings (key, value) VALUES ('total_views', 0) ON CONFLICT (key) DO NOTHING;")
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def get_unique_id(request):
-    # Get real IP (handles proxies like Render/Heroku)
     ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
     app.logger.info(f"Detected IP: {ip}")
     
-    if ip == '127.0.0.1':  # Skip geolocation for local testing
+    if ip == '127.0.0.1':
         location = {'city': '', 'country_name': ''}
     else:
         try:
             response = requests.get(f'http://ipapi.co/{ip}/json/', timeout=5)
             if response.status_code == 200:
                 location = response.json()
-                app.logger.info(f"Location for {ip}: {location.get('city')}, {location.get('country_name')}")
             else:
                 location = {'city': '', 'country_name': ''}
-                app.logger.warning(f"Geolocation API failed with status {response.status_code}")
-        except Exception as e:
+        except:
             location = {'city': '', 'country_name': ''}
-            app.logger.error(f"Geolocation error: {e}")
     
-    ua = request.user_agent.string[:200]  # Truncate UA to avoid huge keys
-    app.logger.info(f"User Agent: {ua}")
-    
+    ua = request.user_agent.string[:200]
     raw_id = f"{ip}:{location.get('city', '')}:{location.get('country_name', '')}:{ua}"
-    unique_id = hashlib.md5(raw_id.encode()).hexdigest()
-    app.logger.info(f"Generated unique_id: {unique_id} from raw: {raw_id[:50]}...")
-    return unique_id
+    return hashlib.md5(raw_id.encode()).hexdigest()
 
 @app.route('/')
 def index():
-    data = load_data()
-    app.logger.info(f"Loaded data - total_views: {data['total_views']}, visits count: {len(data['visits'])}")
+    # Init on first run
+    init_db()
     
     unique_id = get_unique_id(request)
     now = time.time()
+    app.logger.info(f"Unique ID: {unique_id}")
     
-    last_visit = data['visits'].get(unique_id, 0)
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Check last visit
+    cur.execute("SELECT last_visit FROM visits WHERE unique_id = %s;", (unique_id,))
+    row = cur.fetchone()
+    last_visit = row['last_visit'].timestamp() if row else 0
     delta = now - last_visit if last_visit > 0 else 'new'
-    app.logger.info(f"Last visit timestamp: {last_visit}, Delta: {delta}, Threshold: {VIEW_THRESHOLD}")
+    app.logger.info(f"Last visit: {last_visit}, Delta: {delta}s")
     
+    is_new = False
     if last_visit == 0 or (now - last_visit) > VIEW_THRESHOLD:
-        # New or old enough visit: increment
-        data['total_views'] += 1
-        data['visits'][unique_id] = now
-        save_data(data)
+        # Increment total
+        cur.execute("UPDATE settings SET value = value + 1 WHERE key = 'total_views';")
+        # Upsert visit
+        cur.execute("""
+            INSERT INTO visits (unique_id, last_visit) 
+            VALUES (%s, NOW()) 
+            ON CONFLICT (unique_id) DO UPDATE SET last_visit = NOW();
+        """)
+        conn.commit()
         is_new = True
-        app.logger.info("Incremented view count")
-    else:
-        # Recent visit: no increment
-        is_new = False
-        app.logger.info("Recent visit - no increment")
+        app.logger.info("Incremented view!")
+    
+    # Get current total
+    cur.execute("SELECT value FROM settings WHERE key = 'total_views';")
+    total_views = cur.fetchone()['value']
+    
+    cur.close()
+    conn.close()
     
     html = '''
     <!DOCTYPE html>
@@ -111,11 +123,11 @@ def index():
         <div class="counter">Total Views: {{ total_views }}</div>
         <div class="position">You are the {{ total_views }}th visitor!</div>
         <div class="status">{% if is_new %}New view counted!{% else %}Recent visit - not counted again.{% endif %}</div>
-        <p>Views are unique per device/IP/location within 1 hour. Refreshing won't inflate it! 😊</p>
+        <p>Views persist forever now—unique per device/IP/location within 1 hour. No more resets! 😊</p>
     </body>
     </html>
     '''
-    return render_template_string(html, total_views=data['total_views'], is_new=is_new)
+    return render_template_string(html, total_views=total_views, is_new=is_new)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

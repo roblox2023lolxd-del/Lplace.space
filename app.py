@@ -182,10 +182,14 @@ def index():
             .username { padding: 5px; margin: 2px 0; background: white; border: 1px solid #ddd; border-radius: 4px; }
             .available { border-color: #28a745; background: #d4edda; }
             .taken { border-color: #dc3545; background: #f8d7da; }
+            .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin: 10px 0; color: #856404; }
         </style>
     </head>
     <body>
         <h1>Roblox Rare Username Generator</h1>
+        <div class="warning">
+            <strong>⚠️ Availability Note:</strong> This tool uses Roblox's API to check usernames. However, usernames from recently deleted, suspended, or terminated accounts may appear "available" here but could still be reserved or require Roblox support to claim. Always verify in Roblox's username change interface!
+        </div>
         <form method="POST" id="genForm">
             <label>Username Length (3-20):</label>
             <input type="number" name="length" min="3" max="20" value="8" required>

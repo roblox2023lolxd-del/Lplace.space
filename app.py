@@ -399,14 +399,17 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
   background: var(--surface); border-bottom: 1px solid var(--border);
   padding: 0 1.5rem; display: flex; align-items: center; gap: 0.75rem; height: 56px;
 }
-.logo { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
+.logo { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
 .logo span { color: var(--text); font-weight: 400; }
 .tagline { font-size: 0.8125rem; color: var(--muted); }
 
-.tabs-wrap { background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabs-wrap {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
 .tabs { display: flex; max-width: 860px; margin: 0 auto; padding: 0 1rem; }
 .tab {
-  padding: 0 1.125rem; height: 44px; display: flex; align-items: center; gap: 5px;
+  padding: 0 1.125rem; height: 44px; display: flex; align-items: center;
   font-size: 0.875rem; font-weight: 500; cursor: pointer; white-space: nowrap;
   border: none; border-bottom: 2px solid transparent;
   color: var(--muted); background: none; transition: color 0.15s;
@@ -417,7 +420,10 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 .page { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
 
-.notice { border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.8125rem; margin-bottom: 1.25rem; display: flex; gap: 8px; align-items: flex-start; }
+.notice {
+  border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.8125rem;
+  margin-bottom: 1.25rem; line-height: 1.5;
+}
 .notice-warn { background: #fefce8; border: 1px solid #fde047; color: #713f12; }
 .notice-info { background: var(--blue-bg); border: 1px solid var(--blue); color: var(--blue); }
 @media (prefers-color-scheme: dark) {
@@ -444,11 +450,15 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .results { margin-top: 1.5rem; }
-.results-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; color: var(--muted); margin-bottom: 0.75rem; }
+.results-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.8125rem; color: var(--muted); margin-bottom: 0.75rem;
+}
 .un-list { display: flex; flex-direction: column; gap: 6px; }
 .un-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface);
 }
 .un-row:hover { border-color: #a1a1aa; }
 .un-name { font-family: ui-monospace, monospace; font-size: 0.875rem; word-break: break-all; }
@@ -474,14 +484,15 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 #vpn-banner { display: none; }
 .vpn-banner {
   background: #450a0a; border-bottom: 3px solid #dc2626;
-  padding: 0.875rem 1.5rem; display: flex; align-items: flex-start; gap: 12px;
-  color: #fca5a5; font-size: 0.875rem; line-height: 1.5;
+  padding: 0.875rem 1.5rem; color: #fca5a5; font-size: 0.875rem; line-height: 1.6;
 }
 @media (prefers-color-scheme: light) {
   .vpn-banner { background: #fee2e2; border-bottom-color: #b91c1c; color: #7f1d1d; }
 }
-.vpn-icon { font-size: 20px; flex-shrink: 0; line-height: 1.4; }
-.vpn-title { font-weight: 600; font-size: 0.9375rem; margin-bottom: 3px; color: #f87171; }
+.vpn-title {
+  font-weight: 600; font-size: 0.9375rem; margin-bottom: 4px; color: #f87171;
+  text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.8125rem;
+}
 @media (prefers-color-scheme: light) { .vpn-title { color: #991b1b; } }
 .vpn-steps { margin: 6px 0 0 1.25rem; }
 .vpn-steps li { margin-bottom: 2px; }
@@ -491,33 +502,29 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 
 <div id="vpn-banner">
   <div class="vpn-banner">
-    <div class="vpn-icon">&#128274;</div>
-    <div>
-      <div class="vpn-title">VPN or proxy detected &mdash; please disable it</div>
-      <div>Space Gen requires a direct connection to check username availability and protect against abuse.
-      Your request will not go through while a VPN, proxy, or Tor is active.</div>
-      <ol class="vpn-steps">
-        <li>Disconnect from your VPN, proxy, or Tor browser.</li>
-        <li>Reload this page.</li>
-        <li>If you believe this is a mistake, your ISP or network may be flagged &mdash; try a different network.</li>
-      </ol>
-    </div>
+    <div class="vpn-title">Connection blocked &mdash; VPN or proxy detected</div>
+    <div>Space Gen requires a direct connection to verify username availability and protect against abuse. Your requests will not be processed while a VPN, proxy, or Tor connection is active.</div>
+    <ol class="vpn-steps">
+      <li>Disconnect from your VPN, proxy, or Tor browser.</li>
+      <li>Reload this page.</li>
+      <li>If you believe this is an error, your ISP or network may be flagged &mdash; try a different network.</li>
+    </ol>
   </div>
 </div>
 
 <div class="header">
   <div class="logo">Space<span>Gen</span></div>
-  <div class="tagline">Username generator for every platform</div>
+  <div class="tagline">Username generator</div>
 </div>
 
 <div class="tabs-wrap">
   <div class="tabs" id="tabs">
-    <button class="tab active" data-platform="roblox">&#127918; Roblox</button>
-    <button class="tab" data-platform="discord">&#128172; Discord</button>
-    <button class="tab" data-platform="tiktok">&#127925; TikTok</button>
-    <button class="tab" data-platform="youtube">&#128250; YouTube</button>
-    <button class="tab" data-platform="twitch">&#127897; Twitch</button>
-    <button class="tab" data-platform="steam">&#127760; Steam</button>
+    <button class="tab active" data-platform="roblox">Roblox</button>
+    <button class="tab" data-platform="discord">Discord</button>
+    <button class="tab" data-platform="tiktok">TikTok</button>
+    <button class="tab" data-platform="youtube">YouTube</button>
+    <button class="tab" data-platform="twitch">Twitch</button>
+    <button class="tab" data-platform="steam">Steam</button>
   </div>
 </div>
 
@@ -531,7 +538,7 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
         <input type="number" id="length" min="3" max="20" value="8">
       </div>
       <div class="field">
-        <label for="count">How many to generate</label>
+        <label for="count">Quantity</label>
         <input type="number" id="count" min="1" max="50" value="10">
       </div>
     </div>
@@ -540,20 +547,20 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
       <label for="style">Style</label>
       <select id="style">
         <option value="unique">Unique (random)</option>
-        <option value="rank">Rank names (e.g. ProGamer)</option>
+        <option value="rank">Rank (e.g. ProGamer)</option>
         <option value="aesthetic">Aesthetic (minimal)</option>
-        <option value="leet">Leet speak (3l33t style)</option>
+        <option value="leet">Leet speak (3l33t)</option>
         <option value="themed">Themed (space / fantasy / gaming / nature / cyber)</option>
-        <option value="custom">Custom (based on your word)</option>
+        <option value="custom">Custom (based on a word)</option>
       </select>
     </div>
 
     <div class="field" id="base-wrap" style="display:none; margin-top:1rem">
-      <label for="base" id="base-label">Base word or theme</label>
-      <input type="text" id="base" placeholder="e.g. shadow or space">
+      <label for="base" id="base-label">Base word</label>
+      <input type="text" id="base" placeholder="e.g. shadow">
     </div>
 
-    <button class="btn" id="gen-btn">Generate &amp; check availability</button>
+    <button class="btn" id="gen-btn">Generate and check availability</button>
     <p class="error" id="error-msg" style="display:none"></p>
   </div>
 
@@ -571,59 +578,71 @@ const PLATFORM_META = {
 };
 
 const NOTICES = {
-  roblox:  ['warn', 'Availability checked live via Roblox\'s API. Usernames from banned/deleted accounts may appear available — always verify in Roblox\'s username change screen before spending Robux.'],
-  discord: ['info', 'Discord has no public availability API. Names are generated to match Discord\'s format rules — check availability manually in Discord settings.'],
-  tiktok:  ['info', 'TikTok has no public availability API. Names are generated to match TikTok\'s format rules — check availability manually in the TikTok app.'],
-  youtube: ['info', 'YouTube has no public availability API. Names are generated to match YouTube\'s handle rules — check availability manually in YouTube Studio.'],
-  twitch:  ['info', 'Twitch has no public availability API. Names are generated to match Twitch\'s format rules — check availability manually on Twitch.'],
-  steam:   ['info', 'Steam has no public availability API. Names are generated to match Steam\'s format rules — check availability manually in Steam settings.'],
+  roblox:  ['warn', 'Availability is checked live via the Roblox API. Usernames from banned or deleted accounts may appear available here — always confirm in Roblox\'s username change screen before spending Robux.'],
+  discord: ['info', 'Discord does not provide a public availability API. Generated names conform to Discord\'s format rules. Availability must be verified manually in Discord settings.'],
+  tiktok:  ['info', 'TikTok does not provide a public availability API. Generated names conform to TikTok\'s format rules. Availability must be verified manually in the TikTok app.'],
+  youtube: ['info', 'YouTube does not provide a public availability API. Generated names conform to YouTube\'s handle rules. Availability must be verified manually in YouTube Studio.'],
+  twitch:  ['info', 'Twitch does not provide a public availability API. Generated names conform to Twitch\'s format rules. Availability must be verified manually on Twitch.'],
+  steam:   ['info', 'Steam does not provide a public availability API. Generated names conform to Steam\'s format rules. Availability must be verified manually in Steam settings.'],
 };
 
 let currentPlatform = 'roblox';
 
+// ── Tab switching ──────────────────────────────────────────────────────────
 document.getElementById('tabs').addEventListener('click', e => {
   const tab = e.target.closest('[data-platform]');
-  if (!tab) return;
+  if (!tab || tab.dataset.platform === currentPlatform) return;
+
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   currentPlatform = tab.dataset.platform;
-  updatePlatformUI();
+
+  applyPlatform();
   document.getElementById('results').innerHTML = '';
+  document.getElementById('error-msg').style.display = 'none';
   savePrefs();
 });
 
-function updatePlatformUI() {
-  const meta   = PLATFORM_META[currentPlatform];
-  const [type, text] = NOTICES[currentPlatform];
-  const lenInput = document.getElementById('length');
+function applyPlatform() {
+  const meta          = PLATFORM_META[currentPlatform];
+  const [type, text]  = NOTICES[currentPlatform];
+  const lenInput      = document.getElementById('length');
+  const cur           = parseInt(lenInput.value) || 8;
 
-  document.getElementById('length-label').textContent = `Length (${meta.min}\u2013${meta.max})`;
+  // Update length bounds and clamp current value
   lenInput.min = meta.min;
   lenInput.max = meta.max;
-  const cur = parseInt(lenInput.value);
-  if (cur < meta.min) lenInput.value = meta.min;
-  if (cur > meta.max) lenInput.value = Math.min(meta.max, 8);
+  lenInput.value = Math.max(meta.min, Math.min(meta.max, cur));
+
+  document.getElementById('length-label').textContent =
+    'Length (' + meta.min + '\u2013' + meta.max + ')';
 
   document.getElementById('platform-notice').innerHTML =
-    `<div class="notice notice-${type}">&#9432;&nbsp;${text}</div>`;
+    '<div class="notice notice-' + type + '">' + text + '</div>';
 
-  document.getElementById('gen-btn').textContent =
-    meta.check ? 'Generate & check availability' : 'Generate usernames';
+  const btnLabel = meta.check
+    ? 'Generate and check availability'
+    : 'Generate usernames';
+  const btn = document.getElementById('gen-btn');
+  if (!btn.disabled) btn.textContent = btnLabel;
 }
 
-const styleEl  = document.getElementById('style');
-const baseWrap = document.getElementById('base-wrap');
-const baseLabel = document.getElementById('base-label');
+// ── Style toggle ───────────────────────────────────────────────────────────
+const styleEl   = document.getElementById('style');
+const baseWrap  = document.getElementById('base-wrap');
+const baseLbl   = document.getElementById('base-label');
 
-styleEl.addEventListener('change', () => { toggleBase(); savePrefs(); });
+styleEl.addEventListener('change', () => { applyStyle(); savePrefs(); });
 
-function toggleBase() {
+function applyStyle() {
   const v = styleEl.value;
   baseWrap.style.display = (v === 'custom' || v === 'themed') ? 'flex' : 'none';
-  baseLabel.textContent = v === 'themed'
-    ? 'Theme (space, fantasy, gaming, nature, cyber)' : 'Your base word';
+  baseLbl.textContent = v === 'themed'
+    ? 'Theme (space, fantasy, gaming, nature, cyber)'
+    : 'Base word';
 }
 
+// ── Persist preferences ────────────────────────────────────────────────────
 function savePrefs() {
   localStorage.setItem('spaceGen', JSON.stringify({
     platform: currentPlatform,
@@ -636,23 +655,32 @@ function savePrefs() {
 
 function loadPrefs() {
   const saved = JSON.parse(localStorage.getItem('spaceGen') || '{}');
+
   if (saved.platform && PLATFORM_META[saved.platform]) {
     currentPlatform = saved.platform;
     document.querySelectorAll('.tab').forEach(t =>
       t.classList.toggle('active', t.dataset.platform === currentPlatform));
   }
-  if (saved.length) document.getElementById('length').value = saved.length;
   if (saved.count)  document.getElementById('count').value  = saved.count;
   if (saved.style)  styleEl.value = saved.style;
   if (saved.base)   document.getElementById('base').value   = saved.base;
-  updatePlatformUI();
-  toggleBase();
+
+  // applyPlatform sets length bounds first, then we restore saved length
+  applyPlatform();
+  if (saved.length) {
+    const meta = PLATFORM_META[currentPlatform];
+    const v    = parseInt(saved.length);
+    document.getElementById('length').value =
+      Math.max(meta.min, Math.min(meta.max, v));
+  }
+  applyStyle();
 }
 
 ['length','count','base'].forEach(id =>
   document.getElementById(id).addEventListener('input', savePrefs)
 );
 
+// ── Generate ───────────────────────────────────────────────────────────────
 const genBtn    = document.getElementById('gen-btn');
 const errorMsg  = document.getElementById('error-msg');
 const resultsEl = document.getElementById('results');
@@ -660,7 +688,7 @@ const resultsEl = document.getElementById('results');
 genBtn.addEventListener('click', async () => {
   errorMsg.style.display = 'none';
   genBtn.disabled = true;
-  genBtn.innerHTML = '<span class="spinner"></span>Generating\u2026';
+  genBtn.innerHTML = '<span class="spinner"></span>Generating...';
 
   const payload = {
     platform: currentPlatform,
@@ -680,27 +708,31 @@ genBtn.addEventListener('click', async () => {
       const err = await resp.json().catch(() => ({}));
       if (err.error === 'vpn_detected') {
         document.getElementById('vpn-banner').style.display = 'block';
-        throw new Error('VPN or proxy detected. Please disable it and try again.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        throw new Error('VPN or proxy detected. Please disable it and reload the page.');
       }
       throw new Error('Server error ' + resp.status);
     }
     const data = await resp.json();
     renderResults(data);
   } catch (err) {
-    errorMsg.textContent = 'Something went wrong: ' + err.message;
+    errorMsg.textContent = err.message;
     errorMsg.style.display = 'block';
   } finally {
     genBtn.disabled = false;
     const meta = PLATFORM_META[currentPlatform];
-    genBtn.textContent = meta.check ? 'Generate & check availability' : 'Generate usernames';
+    genBtn.textContent = meta.check
+      ? 'Generate and check availability'
+      : 'Generate usernames';
   }
 });
 
+// ── Render results ─────────────────────────────────────────────────────────
 function renderResults(data) {
   const availSet   = new Set((data.available || []).map(s => s.toLowerCase()));
   const unchecked  = data.unchecked;
   const total      = data.generated.length;
-  const availCount = data.available.length;
+  const availCount = (data.available || []).length;
   const platLabel  = PLATFORM_META[data.platform]?.label || data.platform;
 
   const rows = data.generated.map(un => {
@@ -709,44 +741,47 @@ function renderResults(data) {
 
     if (unchecked) {
       badge = '<span class="badge badge-unknown">Not checked</span>';
-      copy  = `<button class="copy-btn" onclick="copyName(this,'${un}')">Copy</button>`;
+      copy  = '<button class="copy-btn" onclick="copyName(this,\'' + un + '\')">Copy</button>';
     } else if (isAvail) {
       badge = '<span class="badge badge-avail">Available</span>';
-      copy  = `<button class="copy-btn" onclick="copyName(this,'${un}')">Copy</button>`;
+      copy  = '<button class="copy-btn" onclick="copyName(this,\'' + un + '\')">Copy</button>';
     } else {
       badge = '<span class="badge badge-taken">Taken</span>';
     }
 
-    return `<div class="un-row">
-      <span class="un-name">${un}</span>
-      <div class="un-right">${badge}${copy}</div>
-    </div>`;
+    return '<div class="un-row">'
+      + '<span class="un-name">' + un + '</span>'
+      + '<div class="un-right">' + badge + copy + '</div>'
+      + '</div>';
   }).join('');
 
   const metaRight = unchecked
-    ? `${total} generated`
-    : `${availCount} of ${total} available`;
+    ? total + ' generated'
+    : availCount + ' of ' + total + ' available';
 
-  resultsEl.innerHTML = `
-    <div class="results">
-      <div class="results-meta">
-        <span>${styleEl.options[styleEl.selectedIndex].text} &middot; ${platLabel}</span>
-        <span>${metaRight}</span>
-      </div>
-      <div class="un-list">${rows}</div>
-      ${unchecked ? '<p class="summary">Availability not checked &mdash; copy and verify manually.</p>'
-                  : `<p class="summary">${availCount} available &middot; ${total - availCount} taken</p>`}
-    </div>`;
+  const footer = unchecked
+    ? '<p class="summary">Availability not checked &mdash; verify manually before use.</p>'
+    : '<p class="summary">' + availCount + ' available &middot; ' + (total - availCount) + ' taken</p>';
+
+  resultsEl.innerHTML =
+    '<div class="results">'
+    + '<div class="results-meta">'
+    + '<span>' + styleEl.options[styleEl.selectedIndex].text + ' &middot; ' + platLabel + '</span>'
+    + '<span>' + metaRight + '</span>'
+    + '</div>'
+    + '<div class="un-list">' + rows + '</div>'
+    + footer
+    + '</div>';
 }
 
 function copyName(btn, name) {
   navigator.clipboard.writeText(name).then(() => {
-    btn.textContent = 'Copied!';
+    btn.textContent = 'Copied';
     setTimeout(() => btn.textContent = 'Copy', 1500);
   });
 }
 
-// ── VPN check on page load ──
+// ── VPN check on page load ─────────────────────────────────────────────────
 (async () => {
   try {
     const resp = await fetch('/check-ip');

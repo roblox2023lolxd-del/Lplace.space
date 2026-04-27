@@ -316,9 +316,14 @@ def index():
 
 @app.route('/check-ip', methods=['GET'])
 def check_ip():
-    ip  = _ip()
-    vpn = _is_vpn(ip)
-    return jsonify({'vpn': vpn, 'ip': ip})
+    """Log VPN status but never block — always return vpn: false to the client.
+    Datacenter IPs (e.g. Render, AWS) are routinely mis-flagged, which would
+    disable every user's generate button.  Rate-limit and abuse control is
+    handled server-side without silently killing the UI.
+    """
+    ip = _ip()
+    _is_vpn(ip)          # runs detection + writes to security log
+    return jsonify({'vpn': False, 'ip': ip})
 
 
 @app.route('/generate', methods=['POST'])
@@ -330,9 +335,9 @@ def generate():
         security_logger.warning('BAD_REQUEST  ip=%s  reason=invalid_json', ip)
         return jsonify({'error': 'Invalid JSON'}), 400
 
-    if _is_vpn(ip):
-        security_logger.warning('GENERATE_BLOCKED_VPN  ip=%s', ip)
-        return jsonify({'error': 'vpn_detected'}), 403
+    # Log VPN status but don't block — datacenter IPs on hosting platforms
+    # (Render, Railway, Fly.io) are routinely flagged, locking out all users.
+    _is_vpn(ip)  # side-effect: logs to security.log
 
     platform = data.get('platform', 'roblox')
     if platform not in VALID_PLATFORMS:
@@ -509,37 +514,11 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
   animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-#vpn-banner { display: none; }
-.vpn-banner {
-  background: #450a0a; border-bottom: 3px solid #dc2626;
-  padding: 0.875rem 1.5rem; color: #fca5a5; font-size: 0.875rem; line-height: 1.6;
-}
-@media (prefers-color-scheme: light) {
-  .vpn-banner { background: #fee2e2; border-bottom-color: #b91c1c; color: #7f1d1d; }
-}
-.vpn-title {
-  font-weight: 600; margin-bottom: 4px; color: #f87171;
-  text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.8125rem;
-}
-@media (prefers-color-scheme: light) { .vpn-title { color: #991b1b; } }
 .vpn-steps { margin: 6px 0 0 1.25rem; }
 .vpn-steps li { margin-bottom: 2px; }
 </style>
 </head>
 <body>
-
-<div id="vpn-banner">
-  <div class="vpn-banner">
-    <div class="vpn-title">Connection blocked &mdash; VPN or proxy detected</div>
-    <p>Space Gen requires a direct connection to verify username availability and protect against abuse.</p>
-    <ol class="vpn-steps">
-      <li>Disconnect from your VPN, proxy, or Tor browser.</li>
-      <li>Reload this page.</li>
-      <li>If you believe this is an error, your ISP or network may be flagged &mdash; try a different network.</li>
-    </ol>
-  </div>
-</div>
 
 <div class="header">
   <div class="logo">Space<span>Gen</span></div>
@@ -813,18 +792,8 @@ function copyName(btn, name) {
 }
 
 // ── VPN check on load ──────────────────────────────────────────────────────
-(async () => {
-  try {
-    const resp = await fetch('/check-ip');
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (data.vpn) {
-      document.getElementById('vpn-banner').style.display = 'block';
-      document.getElementById('gen-btn').disabled = true;
-      document.getElementById('gen-btn').textContent = 'Blocked \u2014 VPN detected';
-    }
-  } catch (_) { /* fail open */ }
-})();
+// Runs silently for logging purposes only — never blocks the UI.
+fetch('/check-ip').catch(() => {});
 
 loadPrefs();
 </script>

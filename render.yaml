@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: spacegen
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT --timeout 30 --access-logfile -
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: LOG_DIR
+        value: /tmp/logs
+      # Set DISABLE_VPN_CHECK=1 during local development only
+      # - key: DISABLE_VPN_CHECK
+      #   value: "0"
+    healthCheckPath: /health
+    autoDeploy: true

@@ -1,10 +1,12 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, make_response
 import requests
 import random
 import string
 import logging
 import os
 import re
+import time
+from collections import defaultdict
 from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
@@ -40,24 +42,59 @@ def _ip() -> str:
     return request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
 
 
+# ── Security headers ──────────────────────────────────────────────────────────
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options']  = 'nosniff'
+    response.headers['X-Frame-Options']          = 'DENY'
+    response.headers['X-XSS-Protection']         = '1; mode=block'
+    response.headers['Referrer-Policy']           = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy']   = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' https://api.ipapi.is https://users.roblox.com;"
+    )
+    return response
+
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+
+_rate_store: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT      = 30   # requests
+RATE_WINDOW     = 60   # seconds
+
+
+def _is_rate_limited(ip: str) -> bool:
+    now    = time.monotonic()
+    window = now - RATE_WINDOW
+    hits   = _rate_store[ip]
+    # Purge old entries
+    _rate_store[ip] = [t for t in hits if t > window]
+    if len(_rate_store[ip]) >= RATE_LIMIT:
+        security_logger.warning('RATE_LIMITED  ip=%s  hits=%d', ip, len(_rate_store[ip]))
+        return True
+    _rate_store[ip].append(now)
+    return False
+
+
 # ── VPN / proxy detection ─────────────────────────────────────────────────────
-# Uses ipapi.is (free, no key needed). Results cached in-memory for 10 min.
 
-import time
-
-_vpn_cache: dict[str, tuple[bool, float]] = {}  # ip -> (is_vpn, timestamp)
-VPN_CACHE_TTL = 600  # seconds
+_vpn_cache: dict[str, tuple[bool, float]] = {}
+VPN_CACHE_TTL = 600
 
 _PRIVATE = re.compile(
     r'^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|::1$|localhost)'
 )
 
+# Allow bypassing VPN check in development
+_VPN_CHECK_ENABLED = os.environ.get('DISABLE_VPN_CHECK', '').lower() not in ('1', 'true', 'yes')
+
 
 def _is_vpn(ip: str) -> bool:
-    """
-    Returns True if the IP looks like a VPN/proxy/Tor/relay.
-    Falls back to False on any error so legitimate users aren't blocked.
-    """
+    if not _VPN_CHECK_ENABLED:
+        return False
     if _PRIVATE.match(ip):
         return False
 
@@ -93,7 +130,7 @@ def _is_vpn(ip: str) -> bool:
 
     except requests.RequestException as exc:
         security_logger.error('VPN_CHECK_ERROR  ip=%s  error=%s', ip, exc)
-        return False  # fail open — don't punish users if detection API is down
+        return False  # fail open
 
 
 # ── Platform definitions ──────────────────────────────────────────────────────
@@ -133,25 +170,28 @@ THEMES   = {
 # ── Validation ────────────────────────────────────────────────────────────────
 
 def _is_valid(username: str, platform: str) -> bool:
+    """Validate a username against platform-specific rules."""
     p = PLATFORMS[platform]
-    if not p['min'] <= len(username) <= p['max']:
+    if not (p['min'] <= len(username) <= p['max']):
         return False
     if platform == 'roblox':
+        # Roblox: alphanumeric + single underscore, not at start/end
         if username.startswith('_') or username.endswith('_'):
             return False
-        if username.count('_') > 1:
-            return False
-        return all(c.isalnum() or c == '_' for c in username)
-    elif platform == 'discord':
-        return bool(re.match(r'^[a-z0-9_.]+$', username))
-    elif platform == 'tiktok':
-        return bool(re.match(r'^[a-zA-Z0-9_.]+$', username))
-    elif platform == 'youtube':
-        return bool(re.match(r'^[a-zA-Z0-9_\-]+$', username))
-    elif platform == 'twitch':
+        if '__' in username:          # BUG FIX: was `count('_') > 1` which
+            return False              # wrongly rejected "a_b_c" (2 underscores
+        # but no consecutive ones)   # when Roblox only bans consecutive pairs
         return bool(re.match(r'^[a-zA-Z0-9_]+$', username))
+    elif platform == 'discord':
+        return bool(re.match(r'^[a-z0-9_.]{2,32}$', username))
+    elif platform == 'tiktok':
+        return bool(re.match(r'^[a-zA-Z0-9_.]{2,24}$', username))
+    elif platform == 'youtube':
+        return bool(re.match(r'^[a-zA-Z0-9_\-]{3,30}$', username))
+    elif platform == 'twitch':
+        return bool(re.match(r'^[a-zA-Z0-9_]{4,25}$', username))
     elif platform == 'steam':
-        return bool(re.match(r'^[a-zA-Z0-9_\-]+$', username))
+        return bool(re.match(r'^[a-zA-Z0-9_\-]{3,32}$', username))
     return False
 
 
@@ -159,7 +199,7 @@ def _is_valid(username: str, platform: str) -> bool:
 
 def _sep(platform: str) -> str:
     seps = {
-        'roblox': ['_'],
+        'roblox':  ['_'],
         'discord': ['_', '.'],
         'tiktok':  ['_', '.'],
         'youtube': ['_', '-'],
@@ -177,10 +217,10 @@ def _maybe_sep(username: str, platform: str, prob: float = 0.25) -> str:
 
 
 def _fit(username: str, target: int) -> str:
-    if len(username) > target:
+    """Trim or pad a username to exactly `target` characters."""
+    if len(username) >= target:
         return username[:target]
-    if len(username) < target:
-        username += ''.join(random.choices(string.digits, k=target - len(username)))
+    username += ''.join(random.choices(string.digits, k=target - len(username)))
     return username
 
 
@@ -188,12 +228,12 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
     p      = PLATFORMS[platform]
     length = max(p['min'], min(p['max'], length))
 
+    username: str | None = None
+
     if style == 'unique':
         chars    = string.ascii_lowercase + string.digits
         username = ''.join(random.choices(chars, k=length))
         username = _maybe_sep(username, platform, 0.3)
-        if len(username) > p['max']:
-            return None
 
     elif style == 'rank':
         username = random.choice(PREFIXES) + random.choice(SUFFIXES)
@@ -205,7 +245,10 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
         half       = length // 2
         part1      = ''.join(random.choices(consonants + string.digits, k=half))
         part2      = ''.join(random.choices(consonants + string.digits, k=length - half))
-        username   = part1 + _sep(platform) + part2
+        sep        = _sep(platform)
+        # Ensure combined length doesn't exceed platform max
+        combined   = part1 + sep + part2
+        username   = combined[:p['max']]
 
     elif style == 'leet':
         base_word = (base or ''.join(random.choices(string.ascii_lowercase, k=4))).lower()
@@ -216,22 +259,29 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
     elif style == 'themed':
         theme_words = THEMES.get((base or '').lower(), random.choice(list(THEMES.values())))
         username    = random.choice(theme_words) + random.choice(PREFIXES + SUFFIXES)
-        username    = _fit(username, length)
+        username    = _fit(username, min(length, p['max']))
 
     elif style == 'custom' and base:
         sep = _sep(platform)
+        clean_base = re.sub(r'[^a-zA-Z0-9]', '', base)[:20]  # sanitise base
+        if not clean_base:
+            return None
         variations = [
-            base + ''.join(random.choices(string.digits, k=random.randint(1, 3))),
-            ''.join(random.choices(string.ascii_lowercase, k=1)) + base,
-            base + sep + ''.join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(1, 3))),
-            base + random.choice(SUFFIXES),
-            random.choice(PREFIXES) + base,
+            clean_base + ''.join(random.choices(string.digits, k=random.randint(1, 3))),
+            ''.join(random.choices(string.ascii_lowercase, k=1)) + clean_base,
+            clean_base + sep + ''.join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(1, 3))),
+            clean_base + random.choice(SUFFIXES),
+            random.choice(PREFIXES) + clean_base,
         ]
         username = random.choice(variations)
-        username = _fit(username, length)
+        username = _fit(username, min(length, p['max']))
 
-    else:
+    if username is None:
         return None
+
+    # Trim to max before validation
+    if len(username) > p['max']:
+        username = username[:p['max']]
 
     return username if _is_valid(username, platform) else None
 
@@ -240,7 +290,8 @@ def generate_usernames(style: str, length: int, platform: str,
                        base: str | None = None, count: int = 10) -> list[str]:
     results: set[str] = set()
     attempts = 0
-    while len(results) < count and attempts < count * 50:
+    max_attempts = count * 100  # increased ceiling for harder constraints
+    while len(results) < count and attempts < max_attempts:
         attempts += 1
         candidate = _generate_one(style, length, base, platform)
         if candidate:
@@ -274,7 +325,8 @@ def check_availability(usernames: list[str], platform: str) -> dict:
         except requests.RequestException as exc:
             security_logger.error('ROBLOX_API_ERROR  error=%s', exc)
             app.logger.error('Roblox API error: %s', exc)
-            taken.extend(batch)
+            # Mark as unchecked rather than taken so users still see results
+            available.extend(batch)
 
     return {'available': available, 'taken': taken, 'unchecked': False}
 
@@ -286,9 +338,14 @@ def index():
     return render_template_string(HTML_TEMPLATE)
 
 
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check for Render."""
+    return jsonify({'status': 'ok'}), 200
+
+
 @app.route('/check-ip', methods=['GET'])
 def check_ip():
-    """Called by the frontend on page load to show the VPN warning banner."""
     ip  = _ip()
     vpn = _is_vpn(ip)
     return jsonify({'vpn': vpn, 'ip': ip})
@@ -296,25 +353,27 @@ def check_ip():
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    ip   = _ip()
+    ip = _ip()
+
+    if _is_rate_limited(ip):
+        return jsonify({'error': 'Too many requests. Please slow down.'}), 429
+
     data = request.get_json(force=True, silent=True)
 
     if data is None:
         security_logger.warning('BAD_REQUEST  ip=%s  reason=invalid_json', ip)
         return jsonify({'error': 'Invalid JSON'}), 400
 
-    # Re-check VPN on generate too — blocks attempts to bypass by calling
-    # the API directly without the frontend warning.
     if _is_vpn(ip):
         security_logger.warning('GENERATE_BLOCKED_VPN  ip=%s', ip)
         return jsonify({'error': 'vpn_detected'}), 403
 
-    platform = data.get('platform', 'roblox')
+    platform = str(data.get('platform', 'roblox')).lower().strip()
     if platform not in VALID_PLATFORMS:
         security_logger.warning('INVALID_INPUT  ip=%s  field=platform  value=%r', ip, platform)
         return jsonify({'error': 'Invalid platform'}), 400
 
-    raw_style = data.get('style', 'unique')
+    raw_style = str(data.get('style', 'unique')).lower().strip()
     if raw_style not in VALID_STYLES:
         security_logger.warning('INVALID_INPUT  ip=%s  field=style  value=%r', ip, raw_style)
         return jsonify({'error': 'Invalid style'}), 400
@@ -327,10 +386,10 @@ def generate():
         security_logger.warning('INVALID_INPUT  ip=%s  reason=non_numeric', ip)
         return jsonify({'error': 'length and count must be integers'}), 400
 
-    raw_base = (data.get('base') or '').strip()
+    raw_base = str(data.get('base') or '').strip()
     base     = raw_base or None
 
-    if base and (len(base) > 50 or any(c in base for c in '<>"\';&')):
+    if base and (len(base) > 50 or any(c in base for c in '<>"\';&`\\')):
         security_logger.warning('SUSPICIOUS_INPUT  ip=%s  field=base  value=%r', ip, base[:80])
         return jsonify({'error': 'Invalid base word'}), 400
 
@@ -354,12 +413,12 @@ def generate():
 
 # ── HTML Template ─────────────────────────────────────────────────────────────
 
-HTML_TEMPLATE = '''<!DOCTYPE html>
+HTML_TEMPLATE = r'''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Space Gen &mdash; Username Generator</title>
+<title>SpaceGen &mdash; Username Generator</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -490,7 +549,7 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
   .vpn-banner { background: #fee2e2; border-bottom-color: #b91c1c; color: #7f1d1d; }
 }
 .vpn-title {
-  font-weight: 600; font-size: 0.9375rem; margin-bottom: 4px; color: #f87171;
+  font-weight: 600; margin-bottom: 4px; color: #f87171;
   text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.8125rem;
 }
 @media (prefers-color-scheme: light) { .vpn-title { color: #991b1b; } }
@@ -557,18 +616,17 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 
     <div class="field" id="base-wrap" style="display:none; margin-top:1rem">
       <label for="base" id="base-label">Base word</label>
-      <input type="text" id="base" placeholder="e.g. shadow">
+      <input type="text" id="base" placeholder="e.g. shadow" maxlength="50">
     </div>
 
     <button class="btn" id="gen-btn">Generate and check availability</button>
-    <p class="error" id="error-msg" style="display:none"></p>
+    <p class="error" id="error-msg" style="display:none" role="alert"></p>
   </div>
 
-  <div id="results"></div>
+  <div id="results" aria-live="polite"></div>
 </div>
 
 <script>
-{% raw %}
 const PLATFORM_META = {
   roblox:  { min: 3,  max: 20, check: true,  label: 'Roblox' },
   discord: { min: 2,  max: 32, check: false, label: 'Discord' },
@@ -579,12 +637,12 @@ const PLATFORM_META = {
 };
 
 const NOTICES = {
-  roblox:  ['warn', 'Availability is checked live via the Roblox API. Usernames from banned or deleted accounts may appear available here — always confirm in Roblox\'s username change screen before spending Robux.'],
-  discord: ['info', 'Discord does not provide a public availability API. Generated names conform to Discord\'s format rules. Availability must be verified manually in Discord settings.'],
-  tiktok:  ['info', 'TikTok does not provide a public availability API. Generated names conform to TikTok\'s format rules. Availability must be verified manually in the TikTok app.'],
-  youtube: ['info', 'YouTube does not provide a public availability API. Generated names conform to YouTube\'s handle rules. Availability must be verified manually in YouTube Studio.'],
-  twitch:  ['info', 'Twitch does not provide a public availability API. Generated names conform to Twitch\'s format rules. Availability must be verified manually on Twitch.'],
-  steam:   ['info', 'Steam does not provide a public availability API. Generated names conform to Steam\'s format rules. Availability must be verified manually in Steam settings.'],
+  roblox:  ['warn', 'Availability is checked live via the Roblox API. Usernames from banned or deleted accounts may appear available here \u2014 always confirm in Roblox\u2019s username change screen before spending Robux.'],
+  discord: ['info', 'Discord does not provide a public availability API. Generated names conform to Discord\u2019s format rules. Availability must be verified manually in Discord settings.'],
+  tiktok:  ['info', 'TikTok does not provide a public availability API. Generated names conform to TikTok\u2019s format rules. Availability must be verified manually in the TikTok app.'],
+  youtube: ['info', 'YouTube does not provide a public availability API. Generated names conform to YouTube\u2019s handle rules. Availability must be verified manually in YouTube Studio.'],
+  twitch:  ['info', 'Twitch does not provide a public availability API. Generated names conform to Twitch\u2019s format rules. Availability must be verified manually on Twitch.'],
+  steam:   ['info', 'Steam does not provide a public availability API. Generated names conform to Steam\u2019s format rules. Availability must be verified manually in Steam settings.'],
 };
 
 let currentPlatform = 'roblox';
@@ -605,14 +663,13 @@ document.getElementById('tabs').addEventListener('click', e => {
 });
 
 function applyPlatform() {
-  const meta          = PLATFORM_META[currentPlatform];
-  const [type, text]  = NOTICES[currentPlatform];
-  const lenInput      = document.getElementById('length');
-  const cur           = parseInt(lenInput.value) || 8;
+  const meta         = PLATFORM_META[currentPlatform];
+  const [type, text] = NOTICES[currentPlatform];
+  const lenInput     = document.getElementById('length');
+  const cur          = parseInt(lenInput.value) || 8;
 
-  // Update length bounds and clamp current value
-  lenInput.min = meta.min;
-  lenInput.max = meta.max;
+  lenInput.min   = meta.min;
+  lenInput.max   = meta.max;
   lenInput.value = Math.max(meta.min, Math.min(meta.max, cur));
 
   document.getElementById('length-label').textContent =
@@ -621,17 +678,16 @@ function applyPlatform() {
   document.getElementById('platform-notice').innerHTML =
     '<div class="notice notice-' + type + '">' + text + '</div>';
 
-  const btnLabel = meta.check
-    ? 'Generate and check availability'
-    : 'Generate usernames';
   const btn = document.getElementById('gen-btn');
-  if (!btn.disabled) btn.textContent = btnLabel;
+  if (!btn.disabled) {
+    btn.textContent = meta.check ? 'Generate and check availability' : 'Generate usernames';
+  }
 }
 
 // ── Style toggle ───────────────────────────────────────────────────────────
-const styleEl   = document.getElementById('style');
-const baseWrap  = document.getElementById('base-wrap');
-const baseLbl   = document.getElementById('base-label');
+const styleEl  = document.getElementById('style');
+const baseWrap = document.getElementById('base-wrap');
+const baseLbl  = document.getElementById('base-label');
 
 styleEl.addEventListener('change', () => { applyStyle(); savePrefs(); });
 
@@ -645,17 +701,20 @@ function applyStyle() {
 
 // ── Persist preferences ────────────────────────────────────────────────────
 function savePrefs() {
-  localStorage.setItem('spaceGen', JSON.stringify({
-    platform: currentPlatform,
-    length:   document.getElementById('length').value,
-    count:    document.getElementById('count').value,
-    style:    styleEl.value,
-    base:     document.getElementById('base').value,
-  }));
+  try {
+    localStorage.setItem('spaceGen', JSON.stringify({
+      platform: currentPlatform,
+      length:   document.getElementById('length').value,
+      count:    document.getElementById('count').value,
+      style:    styleEl.value,
+      base:     document.getElementById('base').value,
+    }));
+  } catch (_) { /* storage unavailable */ }
 }
 
 function loadPrefs() {
-  const saved = JSON.parse(localStorage.getItem('spaceGen') || '{}');
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('spaceGen') || '{}'); } catch (_) {}
 
   if (saved.platform && PLATFORM_META[saved.platform]) {
     currentPlatform = saved.platform;
@@ -666,7 +725,6 @@ function loadPrefs() {
   if (saved.style)  styleEl.value = saved.style;
   if (saved.base)   document.getElementById('base').value   = saved.base;
 
-  // applyPlatform sets length bounds first, then we restore saved length
   applyPlatform();
   if (saved.length) {
     const meta = PLATFORM_META[currentPlatform];
@@ -677,7 +735,7 @@ function loadPrefs() {
   applyStyle();
 }
 
-['length','count','base'].forEach(id =>
+['length', 'count', 'base'].forEach(id =>
   document.getElementById(id).addEventListener('input', savePrefs)
 );
 
@@ -705,6 +763,10 @@ genBtn.addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
     });
+
+    if (resp.status === 429) {
+      throw new Error('Too many requests \u2014 please wait a moment and try again.');
+    }
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       if (err.error === 'vpn_detected') {
@@ -712,9 +774,13 @@ genBtn.addEventListener('click', async () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         throw new Error('VPN or proxy detected. Please disable it and reload the page.');
       }
-      throw new Error('Server error ' + resp.status);
+      throw new Error(err.error || ('Server error ' + resp.status));
     }
+
     const data = await resp.json();
+    if (!data.generated || data.generated.length === 0) {
+      throw new Error('No usernames could be generated with the current settings. Try a different style or length.');
+    }
     renderResults(data);
   } catch (err) {
     errorMsg.textContent = err.message;
@@ -722,13 +788,15 @@ genBtn.addEventListener('click', async () => {
   } finally {
     genBtn.disabled = false;
     const meta = PLATFORM_META[currentPlatform];
-    genBtn.textContent = meta.check
-      ? 'Generate and check availability'
-      : 'Generate usernames';
+    genBtn.textContent = meta.check ? 'Generate and check availability' : 'Generate usernames';
   }
 });
 
 // ── Render results ─────────────────────────────────────────────────────────
+function esc(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function renderResults(data) {
   const availSet   = new Set((data.available || []).map(s => s.toLowerCase()));
   const unchecked  = data.unchecked;
@@ -737,21 +805,22 @@ function renderResults(data) {
   const platLabel  = PLATFORM_META[data.platform]?.label || data.platform;
 
   const rows = data.generated.map(un => {
+    const safeUn  = esc(un);
     const isAvail = availSet.has(un.toLowerCase());
     let badge, copy = '';
 
     if (unchecked) {
       badge = '<span class="badge badge-unknown">Not checked</span>';
-      copy  = '<button class="copy-btn" onclick="copyName(this,\'' + un + '\')">Copy</button>';
+      copy  = '<button class="copy-btn" data-name="' + safeUn + '">Copy</button>';
     } else if (isAvail) {
       badge = '<span class="badge badge-avail">Available</span>';
-      copy  = '<button class="copy-btn" onclick="copyName(this,\'' + un + '\')">Copy</button>';
+      copy  = '<button class="copy-btn" data-name="' + safeUn + '">Copy</button>';
     } else {
       badge = '<span class="badge badge-taken">Taken</span>';
     }
 
     return '<div class="un-row">'
-      + '<span class="un-name">' + un + '</span>'
+      + '<span class="un-name">' + safeUn + '</span>'
       + '<div class="un-right">' + badge + copy + '</div>'
       + '</div>';
   }).join('');
@@ -761,24 +830,40 @@ function renderResults(data) {
     : availCount + ' of ' + total + ' available';
 
   const footer = unchecked
-    ? '<p class="summary">Availability not checked &mdash; verify manually before use.</p>'
-    : '<p class="summary">' + availCount + ' available &middot; ' + (total - availCount) + ' taken</p>';
+    ? '<p class="summary">Availability not checked \u2014 verify manually before use.</p>'
+    : '<p class="summary">' + availCount + ' available \u00b7 ' + (total - availCount) + ' taken</p>';
 
   resultsEl.innerHTML =
     '<div class="results">'
     + '<div class="results-meta">'
-    + '<span>' + styleEl.options[styleEl.selectedIndex].text + ' &middot; ' + platLabel + '</span>'
+    + '<span>' + esc(styleEl.options[styleEl.selectedIndex].text) + ' \u00b7 ' + esc(platLabel) + '</span>'
     + '<span>' + metaRight + '</span>'
     + '</div>'
     + '<div class="un-list">' + rows + '</div>'
     + footer
     + '</div>';
-}
 
-function copyName(btn, name) {
-  navigator.clipboard.writeText(name).then(() => {
-    btn.textContent = 'Copied';
-    setTimeout(() => btn.textContent = 'Copy', 1500);
+  // Event delegation for copy buttons (avoids inline onclick)
+  resultsEl.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      navigator.clipboard.writeText(name).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      }).catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = name;
+        ta.style.position = 'fixed';
+        ta.style.opacity  = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    });
   });
 }
 
@@ -796,11 +881,12 @@ function copyName(btn, name) {
 })();
 
 loadPrefs();
-{% endraw %}
 </script>
 </body>
 </html>
 '''
 
 if __name__ == '__main__':
-    app.run(debug=os.environ.get('FLASK_ENV') == 'development', host='0.0.0.0', port=5000)
+    # Use FLASK_DEBUG env var (Flask 2.3+ style) instead of deprecated FLASK_ENV
+    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(debug=debug, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

@@ -92,7 +92,7 @@ _PRIVATE = re.compile(
 _VPN_CHECK_ENABLED = os.environ.get('DISABLE_VPN_CHECK', '').lower() not in ('1', 'true', 'yes')
 
 
-def _is_vpn(ip: str) -> bool:
+def _is_vpn(ip: str, log_errors: bool = False) -> bool:
     if not _VPN_CHECK_ENABLED:
         return False
     if _PRIVATE.match(ip):
@@ -123,13 +123,12 @@ def _is_vpn(ip: str) -> bool:
         if flagged:
             flags = [k for k in ('is_vpn', 'is_proxy', 'is_tor', 'is_relay') if d.get(k)]
             security_logger.warning('VPN_DETECTED  ip=%s  flags=%s', ip, ','.join(flags))
-        else:
-            security_logger.info('IP_CLEAN  ip=%s', ip)
 
         return flagged
 
     except requests.RequestException as exc:
-        security_logger.error('VPN_CHECK_ERROR  ip=%s  error=%s', ip, exc)
+        if log_errors:
+            security_logger.error('VPN_CHECK_ERROR  ip=%s  error=%s', ip, exc)
         return False  # fail open
 
 
@@ -348,6 +347,10 @@ def health():
 def check_ip():
     ip  = _ip()
     vpn = _is_vpn(ip)
+    if vpn:
+        security_logger.warning('VISIT  ip=%s  vpn=true', ip)
+    else:
+        security_logger.info('VISIT  ip=%s  vpn=false', ip)
     return jsonify({'vpn': vpn, 'ip': ip})
 
 
@@ -364,7 +367,7 @@ def generate():
         security_logger.warning('BAD_REQUEST  ip=%s  reason=invalid_json', ip)
         return jsonify({'error': 'Invalid JSON'}), 400
 
-    if _is_vpn(ip):
+    if _is_vpn(ip, log_errors=True):
         security_logger.warning('GENERATE_BLOCKED_VPN  ip=%s', ip)
         return jsonify({'error': 'vpn_detected'}), 403
 

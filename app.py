@@ -12,30 +12,60 @@ from logging.handlers import RotatingFileHandler
 app = Flask(__name__)
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
+#
+# Gunicorn pre-configures the root logger before our module loads, which means:
+#   • logging.basicConfig() is a no-op (root already has a handler).
+#   • Any logger with propagate=True (the default) will send records BOTH to
+#     our custom handlers AND up to gunicorn's root handler → duplicate lines.
+#   • app.logger inherits from root, so it also needs explicit wiring.
+#
+# Fix: build one shared formatter + one shared StreamHandler, attach them to
+# every logger we care about, and set propagate=False so records stop there.
+# The RotatingFileHandler is added only when LOG_DIR is writable (it isn't on
+# Render's read-only filesystem outside /tmp).
 
-LOG_DIR  = os.environ.get('LOG_DIR', 'logs')
+LOG_DIR  = os.environ.get('LOG_DIR', '/tmp/logs')
 LOG_FILE = os.path.join(LOG_DIR, 'security.log')
-os.makedirs(LOG_DIR, exist_ok=True)
 
 _fmt = logging.Formatter(
     '%(asctime)s  %(levelname)-8s  %(name)s  %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
+def _make_stream_handler() -> logging.StreamHandler:
+    h = logging.StreamHandler()
+    h.setFormatter(_fmt)
+    return h
+
+def _make_file_handler() -> logging.Handler | None:
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        h = RotatingFileHandler(LOG_FILE, maxBytes=2_000_000, backupCount=5)
+        h.setFormatter(_fmt)
+        return h
+    except OSError:
+        return None
+
+def _configure_logger(logger: logging.Logger, level: int = logging.INFO) -> None:
+    """Attach our handlers, clear any inherited ones, and stop propagation."""
+    logger.handlers.clear()          # remove anything gunicorn may have added
+    logger.setLevel(level)
+    logger.addHandler(_make_stream_handler())
+    fh = _make_file_handler()
+    if fh:
+        logger.addHandler(fh)
+    logger.propagate = False         # ← key fix: don't double-log via root
+
+
 security_logger = logging.getLogger('security')
-security_logger.setLevel(logging.INFO)
+_configure_logger(security_logger)
 
-_file_handler = RotatingFileHandler(LOG_FILE, maxBytes=2_000_000, backupCount=5)
-_file_handler.setFormatter(_fmt)
-security_logger.addHandler(_file_handler)
+# Wire Flask's own logger the same way so app.logger.info() shows up too.
+_configure_logger(app.logger)
 
-_console_handler = logging.StreamHandler()
-_console_handler.setFormatter(_fmt)
-security_logger.addHandler(_console_handler)
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(levelname)-8s  %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-app.logger.setLevel(logging.INFO)
+# Silence noisy Werkzeug request logs in production (gunicorn handles access
+# logs via --access-logfile -).
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 
 def _ip() -> str:
@@ -62,15 +92,14 @@ def add_security_headers(response):
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 
 _rate_store: dict[str, list[float]] = defaultdict(list)
-RATE_LIMIT      = 30   # requests
-RATE_WINDOW     = 60   # seconds
+RATE_LIMIT  = 30   # requests
+RATE_WINDOW = 60   # seconds
 
 
 def _is_rate_limited(ip: str) -> bool:
     now    = time.monotonic()
     window = now - RATE_WINDOW
     hits   = _rate_store[ip]
-    # Purge old entries
     _rate_store[ip] = [t for t in hits if t > window]
     if len(_rate_store[ip]) >= RATE_LIMIT:
         security_logger.warning('RATE_LIMITED  ip=%s  hits=%d', ip, len(_rate_store[ip]))
@@ -88,7 +117,6 @@ _PRIVATE = re.compile(
     r'^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|::1$|localhost)'
 )
 
-# Allow bypassing VPN check in development
 _VPN_CHECK_ENABLED = os.environ.get('DISABLE_VPN_CHECK', '').lower() not in ('1', 'true', 'yes')
 
 
@@ -169,17 +197,14 @@ THEMES   = {
 # ── Validation ────────────────────────────────────────────────────────────────
 
 def _is_valid(username: str, platform: str) -> bool:
-    """Validate a username against platform-specific rules."""
     p = PLATFORMS[platform]
     if not (p['min'] <= len(username) <= p['max']):
         return False
     if platform == 'roblox':
-        # Roblox: alphanumeric + single underscore, not at start/end
         if username.startswith('_') or username.endswith('_'):
             return False
-        if '__' in username:          # BUG FIX: was `count('_') > 1` which
-            return False              # wrongly rejected "a_b_c" (2 underscores
-        # but no consecutive ones)   # when Roblox only bans consecutive pairs
+        if '__' in username:
+            return False
         return bool(re.match(r'^[a-zA-Z0-9_]+$', username))
     elif platform == 'discord':
         return bool(re.match(r'^[a-z0-9_.]{2,32}$', username))
@@ -216,7 +241,6 @@ def _maybe_sep(username: str, platform: str, prob: float = 0.25) -> str:
 
 
 def _fit(username: str, target: int) -> str:
-    """Trim or pad a username to exactly `target` characters."""
     if len(username) >= target:
         return username[:target]
     username += ''.join(random.choices(string.digits, k=target - len(username)))
@@ -245,7 +269,6 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
         part1      = ''.join(random.choices(consonants + string.digits, k=half))
         part2      = ''.join(random.choices(consonants + string.digits, k=length - half))
         sep        = _sep(platform)
-        # Ensure combined length doesn't exceed platform max
         combined   = part1 + sep + part2
         username   = combined[:p['max']]
 
@@ -262,7 +285,7 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
 
     elif style == 'custom' and base:
         sep = _sep(platform)
-        clean_base = re.sub(r'[^a-zA-Z0-9]', '', base)[:20]  # sanitise base
+        clean_base = re.sub(r'[^a-zA-Z0-9]', '', base)[:20]
         if not clean_base:
             return None
         variations = [
@@ -278,7 +301,6 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
     if username is None:
         return None
 
-    # Trim to max before validation
     if len(username) > p['max']:
         username = username[:p['max']]
 
@@ -289,7 +311,7 @@ def generate_usernames(style: str, length: int, platform: str,
                        base: str | None = None, count: int = 10) -> list[str]:
     results: set[str] = set()
     attempts = 0
-    max_attempts = count * 100  # increased ceiling for harder constraints
+    max_attempts = count * 100
     while len(results) < count and attempts < max_attempts:
         attempts += 1
         candidate = _generate_one(style, length, base, platform)
@@ -324,7 +346,6 @@ def check_availability(usernames: list[str], platform: str) -> dict:
         except requests.RequestException as exc:
             security_logger.error('ROBLOX_API_ERROR  error=%s', exc)
             app.logger.error('Roblox API error: %s', exc)
-            # Mark as unchecked rather than taken so users still see results
             available.extend(batch)
 
     return {'available': available, 'taken': taken, 'unchecked': False}
@@ -339,7 +360,6 @@ def index():
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check for Render."""
     return jsonify({'status': 'ok'}), 200
 
 
@@ -464,6 +484,14 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 .logo { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
 .logo span { color: var(--text); font-weight: 400; }
 .tagline { font-size: 0.8125rem; color: var(--muted); }
+.ip-pill {
+  margin-left: auto; display: flex; align-items: center; gap: 10px;
+  font-size: 0.75rem; color: var(--muted);
+}
+.ip-pill span { font-family: ui-monospace, monospace; color: var(--text); }
+.ip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.ip-dot.local  { background: var(--accent); }
+.ip-dot.public { background: var(--green); }
 
 .tabs-wrap {
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -577,6 +605,10 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 <div class="header">
   <div class="logo">Space<span>Gen</span></div>
   <div class="tagline">Username generator</div>
+  <div class="ip-pill" id="ip-pill" style="display:none">
+    <span id="ip-local-wrap" style="display:none"><span class="ip-dot local"></span><span id="ip-local">&hellip;</span></span>
+    <span id="ip-public-wrap" style="display:none"><span class="ip-dot public"></span><span id="ip-public">&hellip;</span></span>
+  </div>
 </div>
 
 <div class="tabs-wrap">
@@ -650,7 +682,6 @@ const NOTICES = {
 
 let currentPlatform = 'roblox';
 
-// ── Tab switching ──────────────────────────────────────────────────────────
 document.getElementById('tabs').addEventListener('click', e => {
   const tab = e.target.closest('[data-platform]');
   if (!tab || tab.dataset.platform === currentPlatform) return;
@@ -687,7 +718,6 @@ function applyPlatform() {
   }
 }
 
-// ── Style toggle ───────────────────────────────────────────────────────────
 const styleEl  = document.getElementById('style');
 const baseWrap = document.getElementById('base-wrap');
 const baseLbl  = document.getElementById('base-label');
@@ -702,7 +732,6 @@ function applyStyle() {
     : 'Base word';
 }
 
-// ── Persist preferences ────────────────────────────────────────────────────
 function savePrefs() {
   try {
     localStorage.setItem('spaceGen', JSON.stringify({
@@ -742,7 +771,6 @@ function loadPrefs() {
   document.getElementById(id).addEventListener('input', savePrefs)
 );
 
-// ── Generate ───────────────────────────────────────────────────────────────
 const genBtn    = document.getElementById('gen-btn');
 const errorMsg  = document.getElementById('error-msg');
 const resultsEl = document.getElementById('results');
@@ -795,7 +823,6 @@ genBtn.addEventListener('click', async () => {
   }
 });
 
-// ── Render results ─────────────────────────────────────────────────────────
 function esc(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -846,7 +873,6 @@ function renderResults(data) {
     + footer
     + '</div>';
 
-  // Event delegation for copy buttons (avoids inline onclick)
   resultsEl.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.name;
@@ -854,7 +880,6 @@ function renderResults(data) {
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = 'Copy', 1500);
       }).catch(() => {
-        // Fallback for older browsers
         const ta = document.createElement('textarea');
         ta.value = name;
         ta.style.position = 'fixed';
@@ -870,17 +895,76 @@ function renderResults(data) {
   });
 }
 
-// ── VPN check on page load ─────────────────────────────────────────────────
+// ── Local IP via WebRTC (Option A, no STUN server) ────────────────────────
+function getLocalIP() {
+  return new Promise((resolve) => {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    const found = new Set();
+    pc.createDataChannel('');
+    pc.createOffer()
+      .then(o => pc.setLocalDescription(o))
+      .catch(() => resolve(null));
+    pc.onicecandidate = (e) => {
+      if (!e || !e.candidate) {
+        // gathering complete
+        pc.close();
+        // prefer RFC-1918 addresses; fall back to first found
+        const priv = [...found].find(ip =>
+          /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(ip)
+        );
+        resolve(priv || [...found][0] || null);
+        return;
+      }
+      // extract IPv4 from candidate string
+      const m = e.candidate.candidate.match(
+        /([0-9]{1,3}(?:\.[0-9]{1,3}){3})/
+      );
+      if (m && !m[1].startsWith('0.')) found.add(m[1]);
+    };
+    // hard timeout in case gathering stalls
+    setTimeout(() => { pc.close(); resolve([...found][0] || null); }, 1500);
+  });
+}
+
+// ── VPN check + IP display ─────────────────────────────────────────────────
 (async () => {
-  try {
-    const resp = await fetch('/check-ip');
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (data.vpn) {
+  const pill = document.getElementById('ip-pill');
+
+  // Public IP + VPN check (server-side)
+  const publicCheck = fetch('/check-ip')
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null);
+
+  // Local IP (client-side WebRTC)
+  const localCheck = getLocalIP();
+
+  const [serverData, localIP] = await Promise.all([publicCheck, localCheck]);
+
+  if (serverData) {
+    if (serverData.vpn) {
       document.getElementById('vpn-banner').style.display = 'block';
       document.getElementById('gen-btn').disabled = true;
     }
-  } catch (_) { /* fail open */ }
+    if (serverData.ip) {
+      const wrap = document.getElementById('ip-public-wrap');
+      document.getElementById('ip-public').textContent = serverData.ip;
+      wrap.title = 'Public IP';
+      wrap.style.display = 'inline-flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.gap = '5px';
+      pill.style.display = 'flex';
+    }
+  }
+
+  if (localIP) {
+    const wrap = document.getElementById('ip-local-wrap');
+    document.getElementById('ip-local').textContent = localIP;
+    wrap.title = 'Local IP';
+    wrap.style.display = 'inline-flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '5px';
+    pill.style.display = 'flex';
+  }
 })();
 
 loadPrefs();
@@ -890,6 +974,5 @@ loadPrefs();
 '''
 
 if __name__ == '__main__':
-    # Use FLASK_DEBUG env var (Flask 2.3+ style) instead of deprecated FLASK_ENV
     debug = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(debug=debug, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

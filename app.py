@@ -402,11 +402,20 @@ def check_availability(usernames: list[str], platform: str) -> dict:
 
     if platform == 'discord':
       # Best-effort: use the Playwright-based checker for each username.
-      available, taken = [], []
+      available, taken, unchecked = [], [], []
       for un in usernames:
-        ok, _reason = discord_check.check_discord_username(un, headless=True)
-        (available if ok else taken).append(un)
-      return {'available': available, 'taken': taken, 'unchecked': False}
+        ok, reason = discord_check.check_discord_username(un, headless=True)
+        if ok:
+          available.append(un)
+        else:
+          # If the checker couldn't determine (unknown/no_selector/error)
+          # treat the name as unchecked so we don't report false takens.
+          if reason and (reason.startswith('unknown') or reason in ('no_selector', 'playwright_missing') or reason.startswith('error') or reason.startswith('unknown_via_proxy')):
+            unchecked.append(un)
+          else:
+            taken.append(un)
+
+      return {'available': available, 'taken': taken, 'unchecked': bool(unchecked)}
 
     if platform in PROFILE_URLS:
       available, taken = [], []
@@ -703,7 +712,7 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 </div>
 
 <div class="header">
-  <div class="logo">Space<span>Gen</span></div>
+  <a href="/" class="logo">Space<span>Gen</span></a>
   <div class="tagline">Username generator</div>
   <div class="ip-pill" id="ip-pill" style="display:none">
     <span id="ip-local-wrap" style="display:none"><span class="ip-dot local"></span><span id="ip-local">&hellip;</span></span>

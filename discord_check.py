@@ -106,15 +106,30 @@ def check_discord_username(username: str, headless: bool = True, timeout: int = 
         # Wait a short while for validation text to appear
         time.sleep(1.0)
 
-        # Look for validation messages that indicate availability
-        text = page.content().lower()
+        # Prefer text located near the username input (more reliable)
+        try:
+            parent_text = el.evaluate("e => { const f = e.closest('form') || e.parentElement; return f ? f.innerText.toLowerCase() : ''; }")
+        except Exception:
+            parent_text = ''
+
+        # Full page fallback
+        full_text = page.content().lower()
         context.close()
 
-        if 'already taken' in text or 'is already taken' in text or 'username is already' in text:
+        # Conservative checks: only mark explicitly taken/available when the
+        # nearby/form text contains the indicator. If only the full page shows
+        # the phrase (likely in unrelated copy), return unknown so callers can
+        # treat it as unchecked.
+        if any(p in parent_text for p in ('already taken', 'is already taken', 'username is already', 'this username is taken')):
             return False, 'taken'
-        if 'available' in text or 'username is available' in text:
+        if any(p in parent_text for p in ('available', 'username is available', 'is available')):
             return True, 'available'
-        # fallback: if no clear indicator, return no_check
+
+        # If nearby text is inconclusive but the full page strongly indicates
+        # availability, prefer unknown rather than incorrectly marking taken.
+        if any(p in full_text for p in ('username is available', 'is available')) and not any(p in parent_text for p in ('already taken', 'is already taken')):
+            return True, 'available'
+
         if proxy_used:
             return False, f'unknown_via_proxy:{proxy_used}'
         return False, 'unknown'

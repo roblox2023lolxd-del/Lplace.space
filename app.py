@@ -9,6 +9,11 @@ import time
 from collections import defaultdict
 from logging.handlers import RotatingFileHandler
 from typing import Optional
+try:
+  from . import discord_check
+except Exception:
+  # fallback import for running as script
+  import discord_check
 
 app = Flask(__name__)
 
@@ -529,6 +534,10 @@ def check_name():
         # reuse Roblox API for single name
         data = check_availability([username], 'roblox')
         return jsonify({'platform': platform, 'username': username, 'available': username in data['available'], 'checked': not data.get('unchecked', True)})
+
+    if platform == 'discord':
+      ok, reason = discord_check.check_discord_username(username, headless=True)
+      return jsonify({'platform': platform, 'username': username, 'available': ok, 'checked': True, 'reason': reason})
 
     if platform in PROFILE_URLS:
         ok, reason = _check_profile_url(platform, username, log_errors=True)

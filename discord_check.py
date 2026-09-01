@@ -112,22 +112,41 @@ def check_discord_username(username: str, headless: bool = True, timeout: int = 
         except Exception:
             parent_text = ''
 
+        # Also collect aria-live / alert region text which many sites use
+        live_text = ''
+        try:
+            areas = page.query_selector_all('[aria-live], div[role="alert"]')
+            pieces = []
+            for a in areas:
+                try:
+                    pieces.append(a.inner_text().lower())
+                except Exception:
+                    continue
+            live_text = '\n'.join(pieces)
+        except Exception:
+            live_text = ''
+
         # Full page fallback
         full_text = page.content().lower()
         context.close()
+
+        # Consolidate the nearby text we trust most (parent + live regions)
+        nearby = ' '.join([t for t in (parent_text, live_text) if t])
 
         # Conservative checks: only mark explicitly taken/available when the
         # nearby/form text contains the indicator. If only the full page shows
         # the phrase (likely in unrelated copy), return unknown so callers can
         # treat it as unchecked.
-        if any(p in parent_text for p in ('already taken', 'is already taken', 'username is already', 'this username is taken')):
+        taken_markers = ('already taken', 'is already taken', 'username is already', 'this username is taken', 'that username is taken')
+        avail_markers = ('available', 'username is available', 'is available')
+
+        if any(p in nearby for p in taken_markers):
             return False, 'taken'
-        if any(p in parent_text for p in ('available', 'username is available', 'is available')):
+        if any(p in nearby for p in avail_markers):
             return True, 'available'
 
-        # If nearby text is inconclusive but the full page strongly indicates
-        # availability, prefer unknown rather than incorrectly marking taken.
-        if any(p in full_text for p in ('username is available', 'is available')) and not any(p in parent_text for p in ('already taken', 'is already taken')):
+        # If live areas indicate availability but nearby is empty, accept it
+        if any(p in live_text for p in avail_markers) and not any(p in nearby for p in taken_markers):
             return True, 'available'
 
         if proxy_used:

@@ -325,10 +325,84 @@ def generate_usernames(style: str, length: int, platform: str,
 
 ROBLOX_API = 'https://users.roblox.com/v1/usernames/users'
 
+# Public profile URL templates for platforms where a simple GET can indicate
+# existence. If a GET to the profile URL returns 404 we treat the username as
+# likely available; otherwise it's likely taken. Discord usernames do not map to
+# a public profile URL reliably, so it's left out.
+PROFILE_URLS = {
+  'twitch':  'https://www.twitch.tv/{u}',
+  'tiktok':  'https://www.tiktok.com/@{u}',
+  'youtube': 'https://www.youtube.com/@{u}',
+  'steam':   'https://steamcommunity.com/id/{u}',
+}
+
+_avail_cache: dict[tuple[str, str], tuple[bool, float]] = {}
+AVAIL_CACHE_TTL = 300
+
+_UA = 'SpaceGen/1.0 (+https://example.com)'
+
+def _check_profile_url(platform: str, username: str, log_errors: bool = False) -> tuple[bool, str]:
+  """Return (available, reason). For platforms in PROFILE_URLS, do a GET
+  and treat 404 as available; otherwise return (False, reason) on errors.
+  """
+  tpl = PROFILE_URLS.get(platform)
+  if not tpl:
+    return (False, 'no_check')
+
+  now = time.monotonic()
+  key = (platform, username.lower())
+  cached = _avail_cache.get(key)
+  if cached and now - cached[1] < AVAIL_CACHE_TTL:
+    return (cached[0], 'cached')
+
+  url = tpl.format(u=username)
+  try:
+    resp = requests.get(url, timeout=5, headers={'User-Agent': _UA}, allow_redirects=True)
+    available = resp.status_code == 404
+    _avail_cache[key] = (available, now)
+    return (available, f'status:{resp.status_code}')
+  except requests.RequestException as exc:
+    if log_errors:
+      security_logger.error('PROFILE_CHECK_ERROR platform=%s user=%s error=%s', platform, username, exc)
+    return (False, 'error')
+
 
 def check_availability(usernames: list[str], platform: str) -> dict:
-    if platform != 'roblox':
-        return {'available': usernames, 'taken': [], 'unchecked': True}
+    """Return availability information for a list of `usernames` on `platform`.
+    For Roblox we use the official API. For platforms with a public profile URL
+    we perform a best-effort GET and treat 404 as available. Otherwise we mark
+    results as unchecked.
+    """
+    if platform == 'roblox':
+        available, taken = [], []
+        for i in range(0, len(usernames), 100):
+            batch = usernames[i:i + 100]
+            payload = {'usernames': batch, 'excludeBannedUsers': True}
+            try:
+                resp = requests.post(ROBLOX_API, json=payload, timeout=8)
+                resp.raise_for_status()
+                found = {u['requestedUsername'].lower() for u in resp.json().get('data', [])}
+                for un in batch:
+                    (taken if un.lower() in found else available).append(un)
+                security_logger.info('AVAIL_CHECK  platform=roblox  batch=%d  taken=%d  available=%d',
+                                     len(batch),
+                                     sum(1 for u in batch if u.lower() in found),
+                                     sum(1 for u in batch if u.lower() not in found))
+            except requests.RequestException as exc:
+                security_logger.error('ROBLOX_API_ERROR  error=%s', exc)
+                app.logger.error('Roblox API error: %s', exc)
+                available.extend(batch)
+
+        return {'available': available, 'taken': taken, 'unchecked': False}
+
+    if platform in PROFILE_URLS:
+        available, taken = [], []
+        for un in usernames:
+            ok, _reason = _check_profile_url(platform, un)
+            (available if ok else taken).append(un)
+        return {'available': available, 'taken': taken, 'unchecked': False}
+
+    return {'available': usernames, 'taken': [], 'unchecked': True}
 
     available, taken = [], []
     for i in range(0, len(usernames), 100):
@@ -433,6 +507,35 @@ def generate():
         'unchecked': avail_data.get('unchecked', False),
         'platform':  platform,
     })
+
+@app.route('/check-name', methods=['GET'])
+def check_name():
+    """Check a single username for a given platform. Returns JSON with
+    availability info. Query params: platform, username
+    """
+    platform = str(request.args.get('platform', 'roblox')).lower().strip()
+    username = str(request.args.get('username', '')).strip()
+    if not username:
+        return jsonify({'error': 'missing_username'}), 400
+
+    if platform not in VALID_PLATFORMS:
+        return jsonify({'error': 'invalid_platform'}), 400
+
+    # Quick validation before external checks
+    if not _is_valid(username, platform):
+        return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': True, 'reason': 'invalid_format'})
+
+    if platform == 'roblox':
+        # reuse Roblox API for single name
+        data = check_availability([username], 'roblox')
+        return jsonify({'platform': platform, 'username': username, 'available': username in data['available'], 'checked': not data.get('unchecked', True)})
+
+    if platform in PROFILE_URLS:
+        ok, reason = _check_profile_url(platform, username, log_errors=True)
+        return jsonify({'platform': platform, 'username': username, 'available': ok, 'checked': True, 'reason': reason})
+
+    # cannot check programmatically
+    return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': False, 'reason': 'no_check'})
 
 
 # ── HTML Template ─────────────────────────────────────────────────────────────
@@ -652,7 +755,10 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 
     <div class="field" id="base-wrap" style="display:none; margin-top:1rem">
       <label for="base" id="base-label">Base word</label>
-      <input type="text" id="base" placeholder="e.g. shadow" maxlength="50">
+      <div style="display:flex; gap:8px; align-items:center">
+        <input type="text" id="base" placeholder="e.g. shadow" maxlength="50">
+        <div id="base-availability" style="font-size:0.875rem; color:var(--muted)"></div>
+      </div>
     </div>
 
     <button class="btn" id="gen-btn">Generate and check availability</button>
@@ -732,6 +838,35 @@ function applyStyle() {
     ? 'Theme (space, fantasy, gaming, nature, cyber)'
     : 'Base word';
 }
+
+// Real-time availability check for the base input (single username check).
+let baseCheckTimer = null;
+const baseInput = document.getElementById('base');
+const baseAvailEl = document.getElementById('base-availability');
+function checkBaseAvailability() {
+  const name = baseInput.value.trim();
+  if (!name) { baseAvailEl.textContent = ''; return; }
+  baseAvailEl.textContent = 'Checking...';
+  const params = new URLSearchParams({ platform: currentPlatform, username: name });
+  fetch('/check-name?' + params.toString())
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      if (!data.checked) {
+        baseAvailEl.textContent = 'Cannot check availability for this platform';
+      } else if (data.available) {
+        baseAvailEl.textContent = 'Likely available';
+        baseAvailEl.style.color = 'var(--green)';
+      } else {
+        baseAvailEl.textContent = 'Likely taken';
+        baseAvailEl.style.color = 'var(--red)';
+      }
+    })
+    .catch(() => { baseAvailEl.textContent = 'Check failed'; baseAvailEl.style.color = 'var(--muted)'; });
+}
+baseInput.addEventListener('input', () => {
+  clearTimeout(baseCheckTimer);
+  baseCheckTimer = setTimeout(checkBaseAvailability, 600);
+});
 
 function savePrefs() {
   try {

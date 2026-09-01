@@ -400,35 +400,22 @@ def check_availability(usernames: list[str], platform: str) -> dict:
 
         return {'available': available, 'taken': taken, 'unchecked': False}
 
+    if platform == 'discord':
+      # Best-effort: use the Playwright-based checker for each username.
+      available, taken = [], []
+      for un in usernames:
+        ok, _reason = discord_check.check_discord_username(un, headless=True)
+        (available if ok else taken).append(un)
+      return {'available': available, 'taken': taken, 'unchecked': False}
+
     if platform in PROFILE_URLS:
-        available, taken = [], []
-        for un in usernames:
-            ok, _reason = _check_profile_url(platform, un)
-            (available if ok else taken).append(un)
-        return {'available': available, 'taken': taken, 'unchecked': False}
+      available, taken = [], []
+      for un in usernames:
+        ok, _reason = _check_profile_url(platform, un)
+        (available if ok else taken).append(un)
+      return {'available': available, 'taken': taken, 'unchecked': False}
 
     return {'available': usernames, 'taken': [], 'unchecked': True}
-
-    available, taken = [], []
-    for i in range(0, len(usernames), 100):
-        batch   = usernames[i:i + 100]
-        payload = {'usernames': batch, 'excludeBannedUsers': True}
-        try:
-            resp = requests.post(ROBLOX_API, json=payload, timeout=8)
-            resp.raise_for_status()
-            found = {u['requestedUsername'].lower() for u in resp.json().get('data', [])}
-            for un in batch:
-                (taken if un.lower() in found else available).append(un)
-            security_logger.info('AVAIL_CHECK  platform=roblox  batch=%d  taken=%d  available=%d',
-                                 len(batch),
-                                 sum(1 for u in batch if u.lower() in found),
-                                 sum(1 for u in batch if u.lower() not in found))
-        except requests.RequestException as exc:
-            security_logger.error('ROBLOX_API_ERROR  error=%s', exc)
-            app.logger.error('Roblox API error: %s', exc)
-            available.extend(batch)
-
-    return {'available': available, 'taken': taken, 'unchecked': False}
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -724,6 +711,14 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
   </div>
 </div>
 
+<div class="hero" style="max-width:860px;margin:1.25rem auto;padding:0 1rem;">
+  <div class="card">
+    <h1 style="margin-bottom:8px; font-size:1.25rem">SpaceGen</h1>
+    <p style="color:var(--muted); margin-bottom:12px">Generate memorable usernames and check availability live for supported platforms (Roblox, Discord). Results use best-effort automated checks; always verify before use.</p>
+    <a class="btn" href="#generator">Open generator</a>
+  </div>
+</div>
+
 <div class="tabs-wrap">
   <div class="tabs" id="tabs">
     <button class="tab active" data-platform="roblox">Roblox</button>
@@ -735,7 +730,7 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
   </div>
 </div>
 
-<div class="page">
+<div id="generator" class="page">
   <div class="card">
     <div id="platform-notice"></div>
 
@@ -780,7 +775,7 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 <script>
 const PLATFORM_META = {
   roblox:  { min: 3,  max: 20, check: true,  label: 'Roblox' },
-  discord: { min: 2,  max: 32, check: false, label: 'Discord' },
+  discord: { min: 2,  max: 32, check: true, label: 'Discord' },
   tiktok:  { min: 2,  max: 24, check: false, label: 'TikTok' },
   youtube: { min: 3,  max: 30, check: false, label: 'YouTube' },
   twitch:  { min: 4,  max: 25, check: false, label: 'Twitch' },
@@ -789,7 +784,7 @@ const PLATFORM_META = {
 
 const NOTICES = {
   roblox:  ['warn', 'Availability is checked live via the Roblox API. Usernames from banned or deleted accounts may appear available here \u2014 always confirm in Roblox\u2019s username change screen before spending Robux.'],
-  discord: ['info', 'Discord does not provide a public availability API. Generated names conform to Discord\u2019s format rules. Availability must be verified manually in Discord settings.'],
+  discord: ['info', 'Discord availability is checked via a best-effort automated UI validation (reads Discord\u2019s registration form). Results may be imperfect and can change if Discord updates their site; verify in Discord when needed.'],
   tiktok:  ['info', 'TikTok does not provide a public availability API. Generated names conform to TikTok\u2019s format rules. Availability must be verified manually in the TikTok app.'],
   youtube: ['info', 'YouTube does not provide a public availability API. Generated names conform to YouTube\u2019s handle rules. Availability must be verified manually in YouTube Studio.'],
   twitch:  ['info', 'Twitch does not provide a public availability API. Generated names conform to Twitch\u2019s format rules. Availability must be verified manually on Twitch.'],

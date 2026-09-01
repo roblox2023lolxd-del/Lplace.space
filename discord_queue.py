@@ -6,8 +6,13 @@ from redis import Redis
 from rq import Queue
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-_redis = Redis.from_url(REDIS_URL, decode_responses=True)
-_queue = Queue('default', connection=_redis)
+try:
+    _redis = Redis.from_url(REDIS_URL, decode_responses=True)
+    _queue = Queue('default', connection=_redis)
+except Exception:
+    # If Redis is unavailable at import time (dev machines), create placeholders
+    _redis = None
+    _queue = None
 
 # Cache TTL for Discord check results (seconds)
 CACHE_TTL = int(os.environ.get('DISCORD_CACHE_TTL', 24 * 3600))
@@ -19,11 +24,21 @@ def _key(username: str) -> str:
 
 def cache_result(username: str, available: bool, reason: str) -> None:
     payload = {'available': bool(available), 'reason': reason}
-    _redis.set(_key(username), json.dumps(payload), ex=CACHE_TTL)
+    try:
+        if _redis:
+            _redis.set(_key(username), json.dumps(payload), ex=CACHE_TTL)
+    except Exception:
+        # ignore cache failures
+        return
 
 
 def get_cached(username: str) -> Optional[dict]:
-    v = _redis.get(_key(username))
+    if not _redis:
+        return None
+    try:
+        v = _redis.get(_key(username))
+    except Exception:
+        return None
     if not v:
         return None
     try:
@@ -35,8 +50,21 @@ def get_cached(username: str) -> Optional[dict]:
 def enqueue_check(username: str):
     # Enqueue a check job that will call `check_and_cache` in this module.
     # We return the job id for tracking if callers want it.
-    job = _queue.enqueue(check_and_cache, username)
-    return job.id
+    if not _queue:
+        # Fall back to running synchronously if Redis/RQ unavailable
+        try:
+            return check_and_cache(username)
+        except Exception:
+            return None
+    try:
+        job = _queue.enqueue(check_and_cache, username)
+        return job.id
+    except Exception:
+        # Fall back to sync run on enqueue failure
+        try:
+            return check_and_cache(username)
+        except Exception:
+            return None
 
 
 def check_and_cache(username: str):

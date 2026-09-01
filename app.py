@@ -401,21 +401,26 @@ def check_availability(usernames: list[str], platform: str) -> dict:
         return {'available': available, 'taken': taken, 'unchecked': False}
 
     if platform == 'discord':
-      # Best-effort: use the Playwright-based checker for each username.
-      available, taken, unchecked = [], [], []
-      for un in usernames:
-        ok, reason = discord_check.check_discord_username(un, headless=True)
-        if ok:
-          available.append(un)
-        else:
-          # If the checker couldn't determine (unknown/no_selector/error)
-          # treat the name as unchecked so we don't report false takens.
-          if reason and (reason.startswith('unknown') or reason in ('no_selector', 'playwright_missing') or reason.startswith('error') or reason.startswith('unknown_via_proxy')):
-            unchecked.append(un)
-          else:
-            taken.append(un)
+        # Use Redis-backed cache + RQ: prefer cached results, enqueue missing checks
+        try:
+            from . import discord_queue
+        except Exception:
+            import discord_queue
 
-      return {'available': available, 'taken': taken, 'unchecked': bool(unchecked)}
+        available, taken, unchecked = [], [], []
+        for un in usernames:
+            cached = discord_queue.get_cached(un)
+            if cached is not None:
+                if cached.get('available'):
+                    available.append(un)
+                else:
+                    taken.append(un)
+            else:
+                # Enqueue and mark as unchecked so frontend shows pending state
+                discord_queue.enqueue_check(un)
+                unchecked.append(un)
+
+        return {'available': available, 'taken': taken, 'unchecked': bool(unchecked)}
 
     if platform in PROFILE_URLS:
       available, taken = [], []
@@ -532,8 +537,19 @@ def check_name():
         return jsonify({'platform': platform, 'username': username, 'available': username in data['available'], 'checked': not data.get('unchecked', True)})
 
     if platform == 'discord':
-      ok, reason = discord_check.check_discord_username(username, headless=True)
-      return jsonify({'platform': platform, 'username': username, 'available': ok, 'checked': True, 'reason': reason})
+      # For single-name checks prefer cached result; enqueue if missing.
+      try:
+        from . import discord_queue
+      except Exception:
+        import discord_queue
+
+      cached = discord_queue.get_cached(username)
+      if cached is not None:
+        return jsonify({'platform': platform, 'username': username, 'available': bool(cached.get('available')), 'checked': True, 'reason': cached.get('reason')})
+
+      # Enqueue a background check and return unchecked result
+      discord_queue.enqueue_check(username)
+      return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': False, 'reason': 'enqueued'})
 
     if platform in PROFILE_URLS:
         ok, reason = _check_profile_url(platform, username, log_errors=True)

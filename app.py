@@ -8,6 +8,7 @@ import re
 import time
 from collections import defaultdict
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 
 app = Flask(__name__)
 
@@ -37,7 +38,7 @@ def _make_stream_handler() -> logging.StreamHandler:
     h.setFormatter(_fmt)
     return h
 
-def _make_file_handler() -> logging.Handler | None:
+def _make_file_handler() -> Optional[logging.Handler]:
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
         h = RotatingFileHandler(LOG_FILE, maxBytes=2_000_000, backupCount=5)
@@ -247,11 +248,11 @@ def _fit(username: str, target: int) -> str:
     return username
 
 
-def _generate_one(style: str, length: int, base: str | None, platform: str) -> str | None:
+def _generate_one(style: str, length: int, base: Optional[str], platform: str) -> Optional[str]:
     p      = PLATFORMS[platform]
     length = max(p['min'], min(p['max'], length))
 
-    username: str | None = None
+    username: Optional[str] = None
 
     if style == 'unique':
         chars    = string.ascii_lowercase + string.digits
@@ -308,7 +309,7 @@ def _generate_one(style: str, length: int, base: str | None, platform: str) -> s
 
 
 def generate_usernames(style: str, length: int, platform: str,
-                       base: str | None = None, count: int = 10) -> list[str]:
+                       base: Optional[str] = None, count: int = 10) -> list[str]:
     results: set[str] = set()
     attempts = 0
     max_attempts = count * 100

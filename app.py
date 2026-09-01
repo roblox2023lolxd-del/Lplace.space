@@ -572,8 +572,12 @@ def check_name():
       return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': False, 'reason': 'enqueued'})
 
     if platform in PROFILE_URLS:
-        ok, reason = _check_profile_url(platform, username, log_errors=True)
-        return jsonify({'platform': platform, 'username': username, 'available': ok, 'checked': True, 'reason': reason})
+      ok, reason = _check_profile_url(platform, username, log_errors=True)
+      # Treat inconclusive profile checks as unchecked so UI won't mark
+      # usernames as taken when the HTTP response was ambiguous.
+      if reason in ('unknown', 'error'):
+        return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': False, 'reason': reason})
+      return jsonify({'platform': platform, 'username': username, 'available': ok, 'checked': True, 'reason': reason})
 
     # cannot check programmatically
     return jsonify({'platform': platform, 'username': username, 'available': False, 'checked': False, 'reason': 'no_check'})

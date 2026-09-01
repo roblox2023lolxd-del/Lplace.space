@@ -363,6 +363,21 @@ def _check_profile_url(platform: str, username: str, log_errors: bool = False) -
   url = tpl.format(u=username)
   try:
     resp = requests.get(url, timeout=5, headers={'User-Agent': _UA}, allow_redirects=True)
+    # TikTok often returns a generic 200 page for missing users. Use a
+    # content-based heuristic: if the username is present in the page text
+    # or shown as an @handle, treat as taken; otherwise treat as unknown so
+    # callers don't get false positives.
+    if platform == 'tiktok':
+      if resp.status_code == 404:
+        _avail_cache[key] = (True, now)
+        return (True, 'status:404')
+      if resp.status_code == 200:
+        body = (resp.text or '').lower()
+        if username.lower() in body or ('@' + username.lower()) in body:
+          _avail_cache[key] = (False, now)
+          return (False, 'status:200')
+        return (False, 'unknown')
+
     available = resp.status_code == 404
     _avail_cache[key] = (available, now)
     return (available, f'status:{resp.status_code}')
@@ -423,11 +438,16 @@ def check_availability(usernames: list[str], platform: str) -> dict:
         return {'available': available, 'taken': taken, 'unchecked': bool(unchecked)}
 
     if platform in PROFILE_URLS:
-      available, taken = [], []
+      available, taken, unchecked = [], [], []
       for un in usernames:
         ok, _reason = _check_profile_url(platform, un)
-        (available if ok else taken).append(un)
-      return {'available': available, 'taken': taken, 'unchecked': False}
+        # Treat explicit 'unknown' or 'error' reasons as unchecked so we
+        # don't return false takens to users.
+        if _reason in ('unknown', 'error'):
+          unchecked.append(un)
+        else:
+          (available if ok else taken).append(un)
+      return {'available': available, 'taken': taken, 'unchecked': bool(unchecked)}
 
     return {'available': usernames, 'taken': [], 'unchecked': True}
 
@@ -880,8 +900,13 @@ function checkBaseAvailability() {
   fetch('/check-name?' + params.toString())
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(data => {
-      if (!data.checked) {
-        baseAvailEl.textContent = 'Cannot check availability for this platform';
+        if (!data.checked) {
+          // Pending / enqueued checks (async). Show pending state instead of generic message.
+          if (data.reason === 'enqueued' || data.reason && data.reason.startsWith('unknown')) {
+            baseAvailEl.textContent = 'Pending verification';
+          } else {
+            baseAvailEl.textContent = 'Cannot check availability for this platform';
+          }
       } else if (data.available) {
         baseAvailEl.textContent = 'Likely available';
         baseAvailEl.style.color = 'var(--green)';
@@ -1058,6 +1083,65 @@ function renderResults(data) {
       });
     });
   });
+
+  // If results were enqueued/unchecked, poll for cached results and update UI
+  if (unchecked) {
+    const names = data.generated.slice();
+    const pending = new Set(names.map(n => n.toLowerCase()));
+
+    const pollInterval = 3000; // ms
+    const maxAttempts = 20;
+    let attempts = 0;
+
+    const poll = setInterval(async () => {
+      attempts++;
+      for (const name of names) {
+        if (!pending.has(name.toLowerCase())) continue;
+        try {
+          const params = new URLSearchParams({ platform: data.platform, username: name });
+          const r = await fetch('/check-name?' + params.toString());
+          if (!r.ok) continue;
+          const d = await r.json();
+          if (d.checked) {
+            // Update badge for this name
+            const rows = Array.from(resultsEl.querySelectorAll('.un-row'));
+            for (const row of rows) {
+              const uname = row.querySelector('.un-name').textContent;
+              if (uname === name) {
+                const right = row.querySelector('.un-right');
+                if (d.available) {
+                  right.innerHTML = '<span class="badge badge-avail">Available</span> <button class="copy-btn" data-name="' + esc(name) + '">Copy</button>';
+                } else {
+                  right.innerHTML = '<span class="badge badge-taken">Taken</span>';
+                }
+                // reattach copy handler
+                const cb = right.querySelector('.copy-btn');
+                if (cb) cb.addEventListener('click', () => {
+                  navigator.clipboard.writeText(cb.dataset.name).then(() => {
+                    cb.textContent = 'Copied!'; setTimeout(() => cb.textContent = 'Copy', 1500);
+                  }).catch(() => {});
+                });
+                pending.delete(name.toLowerCase());
+                break;
+              }
+            }
+          }
+        } catch (_) { /* ignore transient errors */ }
+      }
+      // update footer/summary when all resolved or attempts exhausted
+      if (pending.size === 0 || attempts >= maxAttempts) {
+        clearInterval(poll);
+        // trigger a refresh by regenerating avail counts from DOM
+        const total = data.generated.length;
+        const availCount = resultsEl.querySelectorAll('.badge-avail').length;
+        const metaRight = availCount + ' of ' + total + ' available';
+        const summary = '<p class="summary">' + availCount + ' available  ' + (total - availCount) + ' taken</p>';
+        // replace footer
+        const foot = resultsEl.querySelector('.summary');
+        if (foot) foot.outerHTML = '<p class="summary">' + availCount + ' available  ' + (total - availCount) + ' taken</p>';
+      }
+    }, pollInterval);
+  }
 }
 
 // ── Local IP via WebRTC (Option A, no STUN server) ────────────────────────
